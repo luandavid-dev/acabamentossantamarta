@@ -4364,6 +4364,11 @@ def api_conferencia_pendentes():
     except Exception:
         return jsonify({"total": 0})
 
+```dockerfile id="h8pr5d"
+CMD ["gunicorn", "--bind", "0.0.0.0:10000", "app:app"]
+```
+
+
 
 
 
