@@ -1,0 +1,9 @@
+CREDENCIAIS ROTACIONADAS POR SEGURANÇA
+
+As contas abaixo usavam senha padrão/fraca conhecida no banco original e foram substituídas nesta versão.
+Troque todas as senhas no primeiro acesso e remova este arquivo do servidor após a troca.
+
+| id | nome | usuario | email | tipo | senha temporária |
+|---|---|---|---|---|---|
+| 1 | Administrador | admin | admin | admin | P8RFAl8XSbltAf-CyGmAefxG |
+| 11 | ONI ASSIS  | oni | oni.assis@acabamentossantamarta.com.br | comprador | Ci4ABEUnsZFxCGSmNuv_854Z |
