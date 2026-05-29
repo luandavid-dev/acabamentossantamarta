@@ -3694,23 +3694,38 @@ def get_erp_connection():
     if pyodbc is None:
         raise RuntimeError("Dependência pyodbc não instalada. Instale as dependências de produção e o driver ODBC.")
 
-    # Dados fixos do ambiente conforme solicitado (Hardcoded para funcionamento imediato)
-    # Recomenda-se o uso de variáveis de ambiente para maior segurança em produção.
+    # Dados do ambiente (buscando do .env ou do Render com os padrões definidos)
     driver = os.environ.get("ERP_ODBC_DRIVER", "ODBC Driver 17 for SQL Server")
     server = os.environ.get("ERP_DB_SERVER", "192.168.3.32")
     database = os.environ.get("ERP_DB_NAME", "BDENTER")
     user = os.environ.get("ERP_DB_USER", "microuni")
     password = os.environ.get("ERP_DB_PASSWORD", "microuni")
 
-    conn_str = (
-        f"DRIVER={{{driver}}};"
-        f"SERVER={server};"
-        f"DATABASE={database};"
-        f"UID={user};"
-        f"PWD={password};"
-        "TrustServerCertificate=yes;"
-    )
-    return pyodbc.connect(conn_str)
+    # SE ESTIVER RODANDO NO RENDER (LINUX)
+    if os.environ.get("RENDER"):
+        driver = "FreeTDS"
+        string_conexao = (
+            f"DRIVER={{{driver}}};"
+            f"SERVER={server};"
+            f"PORT=1433;"
+            f"DATABASE={database};"
+            f"UID={user};"
+            f"PWD={password};"
+            f"TDS_Version=7.4;"
+        )
+    # SE ESTIVER LOCAL (WINDOWS)
+    else:
+        string_conexao = (
+            f"DRIVER={{{driver}}};"
+            f"SERVER={server};"
+            f"DATABASE={database};"
+            f"UID={user};"
+            f"PWD={password};"
+            f"TrustServerCertificate=yes;"
+        )
+
+    return pyodbc.connect(string_conexao)
+
 
 # =========================================================
 # ROTA LISTAGEM DE PEDIDOS
