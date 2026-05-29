@@ -1111,7 +1111,66 @@ def dashboard():
         filtros=filtros,
         stats=stats,
         charts=charts_template,
-        usuarios_dashboard=usuarios_dashboard
+        usuarios_dashboard = conn.execute("""
+        SELECT
+            id,
+            nome
+        FROM usuarios
+        ORDER BY nome
+    """).fetchall()
+
+    # --- CONSULTAS COMPLEMENTARES (Movidas para ANTES de fechar a conexão) ---
+    # Obter contagem de filiais com tratamento de erro
+    try:
+        total_filiais = conn.execute("SELECT COUNT(*) FROM filiais").fetchone()[0]
+    except Exception:
+        total_filiais = 0
+
+    # Obter furos do mês atual com tratamento de erro
+    try:
+        hoje_now = datetime.now()
+        inicio_mes = hoje_now.replace(day=1).strftime("%Y-%m-%d")
+        # Tenta data_registro ou data_furo dependendo da versão do banco
+        try:
+            furos_mes = conn.execute("SELECT COUNT(*) FROM furo_estoque WHERE date(data_registro) >= date(?)", (inicio_mes,)).fetchone()[0]
+        except Exception:
+            furos_mes = conn.execute("SELECT COUNT(*) FROM furo_estoque WHERE date(data_furo) >= date(?)", (inicio_mes,)).fetchone()[0]
+    except Exception:
+        furos_mes = 0
+
+    # AGORA SIM, após TODAS as consultas estarem prontas, fechamos o banco com segurança:
+    conn.close()
+
+    # Preparar objeto stats para o template
+    stats = {
+        "chamados_abertos": status_counts.get("Aberto", 0),
+        "entregas_hoje": len(compras_stats),
+        "furos_mes": furos_mes,
+        "total_filiais": total_filiais
+    }
+
+    # Ajustar objeto charts para os nomes esperados no template
+    charts_template = {
+        "filiais_labels": [item["produto"] for item in chamados_produto_classificacao_list[:10]],
+        "filiais_values": [item["total"] for item in chamados_produto_classificacao_list[:10]],
+        "status_labels": list(status_counts.keys()),
+        "status_values": list(status_counts.values()),
+        "furos_labels": [item["produto"] for item in top_produtos_furos_list[:10]],
+        "furos_values": [item["total_qtde"] for item in top_produtos_furos_list[:10]],
+        "compras_labels": [item["status"] for item in compras_stats],
+        "compras_values": [item["quantidade"] for item in compras_stats]
+    }
+
+    # RETORNO CORRIGIDO: Inclui a variável que o Jinja2 estava reclamando no log
+    return render_template(
+        "dashboard.html",
+        filtros=filtros,
+        stats=stats,
+        charts=charts_template,
+        usuarios_dashboard=usuarios_dashboard,
+        ajuste_status_counts=ajuste_status_counts,  # <--- ADICIONADO AQUI
+        ajustes_recentes=ajustes_recentes,          # <--- (Boa prática passar também caso use na tabela)
+        top_produtos_furos=top_produtos_furos_list  # <--- (Boa prática passar também caso use na tabela)
     )
 
 # ----------------------------
