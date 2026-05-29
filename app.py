@@ -4364,37 +4364,26 @@ def api_conferencia_pendentes():
     except Exception:
         return jsonify({"total": 0})
 
-# --- ADICIONE ESTE BLOCO NO FINAL DO SEU APP.PY ---
+# --- SUBSTITUA A ROTA INTEIRA POR ESTA NO MEU APP.PY ---
 
-# Token de segurança (Adicione também nas variáveis de ambiente do Render para maior segurança)
 API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "8f3b29c1e4d5f6a7b8c9d0e1f2a3b4c5d6e7f8a")
 
-# Certifique-se de ter importado o "os" no topo do app.py caso ainda não tenha:
-# import os
-
-# Chave secreta de comunicação (Garanta que a mesma palavra esteja no integrador.py da empresa)
-API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "8f3b29c1e4d5f6a7b8c9d0e1f2a3b4c5d6e7f8a")
-
-# --- SUBSTITUA A SUA ROTA POR ESTA VERSÃO COMPLETA ---
-
-API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "ChaveSuperSecretaDoIntegrador123!")
-
-@app.route("/api/pedidos/sincronizar", methods=["POST"])
+@app.route("/api/pedidos/sincronizar", methods=["PUT"])  # <--- Mudamos de POST para PUT aqui
 def api_sincronizar_pedidos():
-    # 1. Validação de segurança robusta por token de cabeçalho (Header)
+    # 1. Validação de segurança por token de cabeçalho (Header)
     token_recebido = request.headers.get("X-Sync-Token")
     if not token_recebido or token_recebido != API_SYNC_TOKEN:
-        return jsonify({"erro": "Acesso não autorizado. Token inválido ou ausente."}), 401
+        return jsonify({"erro": "Acesso não autorizado. Token inválido."}), 401
     
     dados = request.json
     if not dados or "pedidos" not in dados:
-        return jsonify({"erro": "Dados inválidos ou ausentes no corpo da requisição."}), 400
+        return jsonify({"erro": "Dados inválidos ou ausentes."}), 400
     
     pedidos_recebidos = dados["pedidos"]
     
     try:
         with get_db_connection() as conn:
-            # 2. Garante que a tabela local exista no SQLite com as suas colunas exatas
+            # 2. Garante que a tabela exista
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS pedidos_erp (
                     NUMPED TEXT PRIMARY KEY,
@@ -4404,7 +4393,7 @@ def api_sincronizar_pedidos():
                 )
             """)
             
-            # 3. Insere ou atualiza os pedidos em massa
+            # 3. Insere ou atualiza os pedidos
             for p in pedidos_recebidos:
                 conn.execute("""
                     INSERT INTO pedidos_erp (NUMPED, DATA_PEDIDO, FORNECEDOR, DTPREVREC)
@@ -4417,16 +4406,7 @@ def api_sincronizar_pedidos():
             
             conn.commit()
             
-        return jsonify({"status": "sucesso", "mensagem": f"{len(pedidos_recebidos)} pedidos sincronizados com sucesso."}), 200
+        return jsonify({"status": "sucesso", "mensagem": f"{len(pedidos_recebidos)} pedidos sincronizados."}), 200
         
     except Exception as e:
-        return jsonify({"erro": f"Erro interno ao gravar dados no SQLite do Render: {str(e)}"}), 500
-
-
-# --- ADICIONE ESTA LINHA LOGO ABAIXO DA ROTA ACIMA ---
-# Isso força a extensão CSRFProtect do Flask a ignorar esta rota globalmente.
-try:
-    csrf.exempt(api_sincronizar_pedidos)
-except NameError:
-    # Se o seu objeto CSRF não se chamar 'csrf', mude o nome acima para o nome dele
-    pass
+        return jsonify({"erro": f"Erro interno: {str(e)}"}), 500
