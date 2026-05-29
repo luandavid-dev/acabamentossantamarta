@@ -4365,13 +4365,5 @@ def api_conferencia_pendentes():
         return jsonify({"total": 0})
 
 
-```python id="j9ht7l"
-import os
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
-```
-
 
 
