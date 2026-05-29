@@ -1,0 +1,19 @@
+<style>html,body,input,button,select,textarea{font-family:"DM Sans",system-ui,sans-serif !important;}</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+{% extends 'layout.html' %}
+{% block content %}
+<div class="card">
+  <h3>Nova Filial</h3>
+  <form method="POST" action="{{ url_for('nova_filial') }}">
+    <input name="nome" class="input" placeholder="Nome" required>
+    <input name="endereco" class="input" placeholder="Endereço">
+    <input name="cidade" class="input" placeholder="Cidade">
+    <input name="estado" class="input" placeholder="Estado">
+    <input name="telefone" class="input" placeholder="Telefone">
+    <button class="btn-primary" type="submit">Salvar</button>
+  </form>
+</div>
+{% endblock %}

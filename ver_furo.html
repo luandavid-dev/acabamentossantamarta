@@ -1,0 +1,1061 @@
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+{% extends 'layout.html' %}
+
+{% block content %}
+
+{% set status_atual = furo.status or 'ABERTO' %}
+{% set qtde_sistema = furo.qtde_sistema|float %}
+{% set qtde_encontrada = furo.qtde_encontrada|float %}
+{% set dif = qtde_encontrada - qtde_sistema %}
+{% set codigo_produto = furo.codpro or furo.codigo or furo.codigo_produto or '-' %}
+
+<div class="page">
+
+    <div class="header">
+
+        <div class="header-left">
+
+            <div class="header-badges">
+
+                <div class="badge-page">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    AJUSTE ERP
+                </div>
+
+                <div class="badge-id">
+                    <i class="fa-solid fa-hashtag"></i>
+                    Ajuste {{ furo.id }}
+                </div>
+
+            </div>
+
+            <h1>
+                Controle de Divergência de Estoque
+            </h1>
+
+            <p>
+                Gestão de conferência física, análise ERP e rastreabilidade do ajuste
+            </p>
+
+        </div>
+
+        <div class="header-right">
+
+            <div class="status-pill {{ status_atual|lower|replace(' ', '-') }}">
+                {% if status_atual == 'ABERTO' %}
+                    <i class="fa-solid fa-clock"></i>
+                    Aberto
+                {% elif status_atual == 'EM ANALISE' %}
+                    <i class="fa-solid fa-spinner"></i>
+                    Em Análise
+                {% else %}
+                    <i class="fa-solid fa-circle-check"></i>
+                    Finalizado
+                {% endif %}
+            </div>
+
+            <a href="{{ url_for('furo_estoque') }}" class="btn-back">
+                <i class="fa-solid fa-arrow-left"></i>
+                Voltar
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="summary-grid">
+
+        <div class="summary-card">
+            <span>Qtd. Sistema</span>
+            <strong>{{ "%.2f"|format(qtde_sistema) }}</strong>
+        </div>
+
+        <div class="summary-card">
+            <span>Qtd. Encontrada</span>
+            <strong>{{ "%.2f"|format(qtde_encontrada) }}</strong>
+        </div>
+
+        <div class="summary-card diff-card">
+            <span>Diferença</span>
+            <strong class="{% if dif == 0 %}ok{% elif dif > 0 %}up{% else %}down{% endif %}">
+                {% if dif > 0 %}+{% endif %}{{ "%.2f"|format(dif) }}
+            </strong>
+        </div>
+
+    </div>
+
+    <div class="checklist-card">
+
+        <div class="section-head">
+
+            <div>
+                <h3>
+                    <i class="fa-solid fa-list-check"></i>
+                    Checklist do Ajuste
+                </h3>
+
+                <p>
+                    Acompanhamento operacional do processo
+                </p>
+            </div>
+
+        </div>
+
+        <div class="check-grid">
+
+            <div class="check-item done">
+                <div class="check-icon">
+                    <i class="fa-solid fa-file-circle-plus"></i>
+                </div>
+
+                <div>
+                    <strong>Ajuste Registrado</strong>
+                    <span>{{ furo.data_furo_fmt or '-' }}</span>
+                </div>
+            </div>
+
+            <div class="check-item {% if furo.conferido_por_nome and furo.conferido_por_nome != '-' %}done{% endif %}">
+                <div class="check-icon">
+                    <i class="fa-solid fa-user-check"></i>
+                </div>
+
+                <div>
+                    <strong>Conferência Realizada</strong>
+                    <span>{{ furo.conferido_por_nome or '-' }}</span>
+                </div>
+            </div>
+
+            <div class="check-item {% if status_atual == 'EM ANALISE' or status_atual == 'FINALIZADO' %}done{% endif %}">
+                <div class="check-icon">
+                    <i class="fa-solid fa-magnifying-glass-chart"></i>
+                </div>
+
+                <div>
+                    <strong>Análise ERP</strong>
+
+                    <span>
+                        {% if status_atual == 'FINALIZADO' %}
+                            Finalizado
+                        {% elif status_atual == 'EM ANALISE' %}
+                            Em andamento
+                        {% else %}
+                            Pendente
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="check-item {% if status_atual == 'FINALIZADO' %}done{% endif %}">
+                <div class="check-icon">
+                    <i class="fa-solid fa-square-check"></i>
+                </div>
+
+                <div>
+                    <strong>Ajuste Finalizado</strong>
+                    <span>{{ furo.data_ajuste_erp_fmt or 'Pendente' }}</span>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="card">
+
+        <div class="section-head compact">
+
+            <div>
+                <h3>
+                    <i class="fa-solid fa-clipboard-list"></i>
+                    Dados do Ajuste
+                </h3>
+
+                <p>
+                    Informações registradas na abertura e no acompanhamento ERP
+                </p>
+            </div>
+
+        </div>
+
+        <div class="grid">
+
+            <div class="box">
+                <span>Código</span>
+                <strong>{{ codigo_produto }}</strong>
+            </div>
+
+            <div class="box full">
+                <span>Produto</span>
+                <strong class="product">
+                    {{ furo.descricao or '-' }}
+                </strong>
+            </div>
+
+            <div class="box">
+                <span>Filial</span>
+                <strong>{{ furo.filial or '-' }}</strong>
+            </div>
+
+            <div class="box">
+                <span>Pátio</span>
+                <strong>{{ furo.patio or '-' }}</strong>
+            </div>
+
+            <div class="box">
+                <span>Local Físico</span>
+                <strong>{{ furo.local_fisico or '-' }}</strong>
+            </div>
+
+            <div class="box">
+                <span>Lote</span>
+                <strong>{{ furo.lote or '-' }}</strong>
+            </div>
+
+            <div class="box">
+                <span>Tonalidade</span>
+                <strong>{{ furo.tonalidade or '-' }}</strong>
+            </div>
+
+            <div class="box">
+                <span>Bitola</span>
+                <strong>{{ furo.bitola or '-' }}</strong>
+            </div>
+
+            <div class="box">
+                <span>Status</span>
+                <strong class="status {{ status_atual|lower|replace(' ', '-') }}">
+                    {{ status_atual }}
+                </strong>
+            </div>
+
+            <div class="box">
+                <span>Conferido Por</span>
+                <strong>{{ furo.conferido_por_nome or '-' }}</strong>
+            </div>
+
+            <div class="box">
+                <span>Ajustado ERP</span>
+                <strong>{{ furo.ajustado_por_nome or '-' }}</strong>
+            </div>
+
+            <div class="box">
+                <span>Data Abertura</span>
+                <strong>{{ furo.data_furo_fmt or '-' }}</strong>
+            </div>
+
+            <div class="box">
+                <span>Data Ajuste ERP</span>
+                <strong>{{ furo.data_ajuste_erp_fmt or '-' }}</strong>
+            </div>
+
+        </div>
+
+        <div class="content-split">
+
+            <div class="messages">
+
+                <div class="section-head compact">
+
+                    <div>
+                        <h3>
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                            Histórico
+                        </h3>
+
+                        <p>
+                            Movimentações e tratativas registradas
+                        </p>
+                    </div>
+
+                </div>
+
+                {% if furo.mensagens %}
+
+                    <div class="timeline">
+
+                        {% for m in furo.mensagens %}
+
+                            <div class="msg">
+
+                                <div class="avatar">
+                                    {{ (m.usuario or 'U')[0] }}
+                                </div>
+
+                                <div class="msg-content">
+
+                                    <div class="msg-top">
+                                        <b>{{ m.usuario or 'Usuário' }}</b>
+                                        <small>{{ m.datahora }}</small>
+                                    </div>
+
+                                    <p>{{ m.texto }}</p>
+
+                                </div>
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% else %}
+
+                    <div class="empty">
+                        <i class="fa-regular fa-folder-open"></i>
+                        <span>Nenhuma movimentação registrada</span>
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+            <div class="form-card">
+
+                <div class="section-head compact">
+
+                    <div>
+                        <h3>
+                            <i class="fa-solid fa-pen-to-square"></i>
+                            Atualização
+                        </h3>
+
+                        <p>
+                            Inclua observações e altere o status do ajuste
+                        </p>
+                    </div>
+
+                </div>
+
+                <form method="POST" class="form">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="form-group">
+
+                        <label>
+                            Nova Mensagem
+                        </label>
+
+                        <textarea
+                            name="mensagens"
+                            placeholder="Digite observações, tratativas, análises ERP ou informações adicionais..."
+                        ></textarea>
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label>Status</label>
+
+                        <select name="status" id="status">
+
+                            <option value="ABERTO" {% if status_atual == 'ABERTO' %}selected{% endif %}>
+                                Aberto
+                            </option>
+
+                            <option value="EM ANALISE" {% if status_atual == 'EM ANALISE' %}selected{% endif %}>
+                                Em Análise
+                            </option>
+
+                            <option value="FINALIZADO" {% if status_atual == 'FINALIZADO' %}selected{% endif %}>
+                                Finalizado
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                    <div class="alert-finalizar" id="alertFinalizar">
+
+                        <i class="fa-solid fa-circle-info"></i>
+
+                        <div>
+                            <strong>Finalização ERP</strong>
+
+                            <p>
+                                Ao atualizar para <b>FINALIZADO</b>, o sistema preencherá automaticamente o usuário ajustador e a data do ajuste ERP.
+                            </p>
+                        </div>
+
+                    </div>
+
+                    <button type="submit" class="btn-save">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        Atualizar Ajuste
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+html,body,input,button,select,textarea{font-family:"DM Sans",system-ui,sans-serif !important;}
+
+
+:root{
+    --bg:#f3f7fc;
+    --surface:#ffffff;
+    --surface-soft:#f8fafc;
+    --primary:#0b3b75;
+    --primary-2:#1451a3;
+    --accent:#1565c0;
+    --success:#16a34a;
+    --success-bg:#dcfce7;
+    --danger:#dc2626;
+    --danger-bg:#fee2e2;
+    --warning:#d97706;
+    --warning-bg:#fef3c7;
+    --info-bg:#e8f1fd;
+    --border:#dbe7f5;
+    --text:#0f172a;
+    --muted:#64748b;
+    --shadow-sm:0 6px 18px rgba(11,59,117,.06);
+    --shadow-md:0 14px 36px rgba(11,59,117,.10);
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    background:linear-gradient(180deg,#f8fbff 0%,#eef4fb 100%);
+}
+
+.page{
+    max-width:1600px;
+    margin:0 auto;
+    padding:24px;
+    min-height:100vh;
+    font-family:Arial, Helvetica, sans-serif;
+    color:var(--text);
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:20px;
+    margin-bottom:20px;
+}
+
+.header-left{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.header-badges{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.badge-page,
+.badge-id{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    width:max-content;
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:800;
+}
+
+.badge-page{
+    background:#dbeafe;
+    color:#1d4ed8;
+}
+
+.badge-id{
+    background:#ecfdf5;
+    color:#166534;
+    border:1px solid #bbf7d0;
+}
+
+.header h1{
+    font-size:30px;
+    line-height:1.15;
+    color:var(--text);
+    font-weight:900;
+    margin:0;
+}
+
+.header p{
+    color:var(--muted);
+    font-size:14px;
+    margin:0;
+}
+
+.header-right{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    flex-wrap:wrap;
+}
+
+.btn-back{
+    min-height:42px;
+    background:linear-gradient(135deg,var(--primary),var(--primary-2));
+    color:#fff;
+    padding:0 16px;
+    border-radius:13px;
+    text-decoration:none;
+    font-size:13px;
+    font-weight:800;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    box-shadow:0 10px 22px rgba(11,59,117,.18);
+    transition:.2s;
+}
+
+.btn-back:hover{
+    transform:translateY(-2px);
+}
+
+.status-pill{
+    min-height:42px;
+    padding:0 15px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:900;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    text-transform:uppercase;
+}
+
+.status-pill.aberto,
+.status.aberto{
+    background:var(--warning-bg);
+    color:#92400e;
+}
+
+.status-pill.em-analise,
+.status.em-analise{
+    background:var(--info-bg);
+    color:#0d47a1;
+}
+
+.status-pill.finalizado,
+.status.finalizado{
+    background:var(--success-bg);
+    color:#166534;
+}
+
+.summary-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:14px;
+    margin-bottom:20px;
+}
+
+.summary-card{
+    background:#fff;
+    border:1px solid #e7eef8;
+    border-radius:18px;
+    padding:18px;
+    box-shadow:var(--shadow-sm);
+}
+
+.summary-card span{
+    display:block;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:800;
+    text-transform:uppercase;
+    margin-bottom:8px;
+}
+
+.summary-card strong{
+    display:block;
+    font-size:28px;
+    font-weight:900;
+    color:var(--text);
+    font-variant-numeric:tabular-nums;
+}
+
+.summary-card .ok,
+.diff-card .ok{
+    color:#166534;
+}
+
+.summary-card .up,
+.diff-card .up{
+    color:#0d47a1;
+}
+
+.summary-card .down,
+.diff-card .down{
+    color:#991b1b;
+}
+
+.checklist-card,
+.card{
+    background:#fff;
+    border:1px solid #e7eef8;
+    border-radius:18px;
+    box-shadow:var(--shadow-md);
+}
+
+.checklist-card{
+    padding:22px;
+    margin-bottom:20px;
+}
+
+.card{
+    padding:24px;
+}
+
+.section-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:20px;
+}
+
+.section-head.compact{
+    margin-bottom:16px;
+}
+
+.section-head h3{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:var(--text);
+    font-size:21px;
+    font-weight:900;
+    margin:0 0 6px;
+}
+
+.section-head h3 i{
+    color:var(--accent);
+}
+
+.section-head p{
+    margin:0;
+    color:var(--muted);
+    font-size:13px;
+}
+
+.check-grid{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:14px;
+}
+
+.check-item{
+    border:1px solid #e7eef8;
+    border-radius:16px;
+    padding:16px;
+    display:flex;
+    align-items:center;
+    gap:13px;
+    background:#f8fafc;
+}
+
+.check-icon{
+    width:46px;
+    height:46px;
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#eef2f7;
+    color:#64748b;
+    font-size:20px;
+    flex:0 0 auto;
+}
+
+.check-item strong{
+    display:block;
+    color:var(--text);
+    font-size:14px;
+    margin-bottom:4px;
+}
+
+.check-item span{
+    font-size:12px;
+    color:var(--muted);
+    font-weight:700;
+}
+
+.check-item.done{
+    background:#ecfdf5;
+    border-color:#bbf7d0;
+}
+
+.check-item.done .check-icon{
+    background:#dcfce7;
+    color:#15803d;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:14px;
+    margin-bottom:24px;
+}
+
+.box{
+    background:#f8fafc;
+    border:1px solid #e7eef8;
+    padding:16px;
+    border-radius:16px;
+    min-width:0;
+}
+
+.box.full{
+    grid-column:span 3;
+}
+
+.box span{
+    display:block;
+    font-size:11px;
+    font-weight:900;
+    color:var(--muted);
+    text-transform:uppercase;
+    margin-bottom:9px;
+}
+
+.box strong{
+    display:block;
+    color:var(--text);
+    font-size:15px;
+    font-weight:900;
+    word-break:break-word;
+}
+
+.product{
+    font-size:17px !important;
+    line-height:1.45;
+}
+
+.status{
+    display:inline-flex !important;
+    width:fit-content;
+    padding:7px 11px;
+    border-radius:999px;
+    font-size:11px !important;
+    font-weight:900;
+}
+
+.content-split{
+    display:grid;
+    grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);
+    gap:22px;
+    border-top:1px solid #e7eef8;
+    padding-top:24px;
+}
+
+.timeline{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+.msg{
+    display:flex;
+    align-items:flex-start;
+    gap:13px;
+    background:#f8fafc;
+    border:1px solid #e7eef8;
+    border-radius:16px;
+    padding:16px;
+}
+
+.avatar{
+    width:42px;
+    height:42px;
+    border-radius:14px;
+    background:linear-gradient(135deg,var(--accent),#0d47a1);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:900;
+    text-transform:uppercase;
+    flex:0 0 auto;
+}
+
+.msg-content{
+    min-width:0;
+    flex:1;
+}
+
+.msg-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    margin-bottom:8px;
+}
+
+.msg b{
+    display:block;
+    color:var(--text);
+    font-size:14px;
+}
+
+.msg small{
+    color:var(--muted);
+    font-size:12px;
+    font-weight:700;
+    white-space:nowrap;
+}
+
+.msg p{
+    color:#334155;
+    line-height:1.55;
+    font-size:14px;
+    margin:0;
+    white-space:pre-wrap;
+}
+
+.empty{
+    background:#f8fafc;
+    border:1px dashed #cbd5e1;
+    border-radius:16px;
+    padding:34px;
+    text-align:center;
+    color:var(--muted);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    font-weight:700;
+}
+
+.empty i{
+    font-size:34px;
+    color:#94a3b8;
+}
+
+.form-card{
+    background:#f8fafc;
+    border:1px solid #e7eef8;
+    border-radius:18px;
+    padding:18px;
+    align-self:start;
+}
+
+.form{
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+}
+
+.form-group{
+    display:flex;
+    flex-direction:column;
+}
+
+.form-group label{
+    margin-bottom:8px;
+    font-size:12px;
+    font-weight:900;
+    color:#334155;
+    text-transform:uppercase;
+}
+
+textarea{
+    min-height:150px;
+    resize:vertical;
+}
+
+textarea,
+select{
+    width:100%;
+    border:1px solid #dbe7f5;
+    border-radius:14px;
+    padding:14px;
+    font-size:14px;
+    background:#fff;
+    color:var(--text);
+    transition:.2s;
+}
+
+textarea:focus,
+select:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 4px rgba(21,101,192,.10);
+}
+
+.alert-finalizar{
+    display:none;
+    align-items:flex-start;
+    gap:13px;
+    background:#eff6ff;
+    border:1px solid #bfdbfe;
+    border-radius:16px;
+    padding:15px;
+}
+
+.alert-finalizar.show{
+    display:flex;
+}
+
+.alert-finalizar i{
+    color:#2563eb;
+    font-size:22px;
+    margin-top:2px;
+}
+
+.alert-finalizar strong{
+    display:block;
+    color:#1e3a8a;
+    margin-bottom:5px;
+}
+
+.alert-finalizar p{
+    color:#334155;
+    margin:0;
+    font-size:13px;
+    line-height:1.45;
+}
+
+.btn-save{
+    height:50px;
+    border:none;
+    border-radius:14px;
+    background:#16a34a;
+    color:#fff;
+    font-size:14px;
+    font-weight:900;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    transition:.2s;
+    box-shadow:0 10px 22px rgba(22,163,74,.18);
+}
+
+.btn-save:hover{
+    background:#15803d;
+    transform:translateY(-2px);
+}
+
+@media(max-width:1200px){
+    .check-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+    .grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+    .box.full{
+        grid-column:1/-1;
+    }
+
+    .content-split{
+        grid-template-columns:1fr;
+    }
+}
+
+@media(max-width:760px){
+    .page{
+        padding:12px;
+    }
+
+    .header{
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    .header h1{
+        font-size:24px;
+    }
+
+    .header-right{
+        width:100%;
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    .status-pill,
+    .btn-back{
+        width:100%;
+    }
+
+    .summary-grid,
+    .check-grid,
+    .grid{
+        grid-template-columns:1fr;
+    }
+
+    .summary-card strong{
+        font-size:24px;
+    }
+
+    .checklist-card,
+    .card{
+        border-radius:16px;
+        padding:16px;
+    }
+
+    .msg{
+        flex-direction:column;
+    }
+
+    .msg-top{
+        flex-direction:column;
+        gap:4px;
+    }
+
+    .msg small{
+        white-space:normal;
+    }
+
+    .form-card{
+        padding:16px;
+    }
+}
+
+</style>
+
+<script>
+
+const statusSelect = document.getElementById("status");
+
+const alertFinalizar = document.getElementById("alertFinalizar");
+
+function controlarAvisoFinalizacao(){
+
+    if(statusSelect.value === "FINALIZADO"){
+
+        alertFinalizar.classList.add("show");
+
+    } else {
+
+        alertFinalizar.classList.remove("show");
+
+    }
+
+}
+
+statusSelect.addEventListener(
+    "change",
+    controlarAvisoFinalizacao
+);
+
+controlarAvisoFinalizacao();
+
+</script>
+
+{% endblock %}

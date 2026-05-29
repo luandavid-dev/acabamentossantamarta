@@ -1,0 +1,80 @@
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+{% extends "layout.html" %}
+{% block content %}
+<h1>Editar Furo de Estoque</h1>
+
+<form method="POST" action="{{ url_for('ver_furo', furo_id=furo.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <label for="produto">Produto:</label><br>
+    <input type="text" id="produto" name="produto" autocomplete="off" value="{{ furo.produto_nome }}" style="width: 300px;">
+    <div id="lista-produtos" class="autocomplete-list"></div><br><br>
+
+    <label for="quantidade">Quantidade:</label><br>
+    <input type="number" id="quantidade" name="quantidade" min="1" value="{{ furo.quantidade }}"><br><br>
+
+    <button type="submit">Atualizar Furo</button>
+</form>
+
+<style>
+html,body,input,button,select,textarea{font-family:"DM Sans",system-ui,sans-serif !important;}
+
+.autocomplete-list {
+    border: 1px solid #ccc;
+    max-height: 150px;
+    overflow-y: auto;
+    position: absolute;
+    background: #fff;
+    z-index: 100;
+    width: 300px;
+}
+
+.autocomplete-item {
+    padding: 5px;
+    cursor: pointer;
+}
+
+.autocomplete-item:hover {
+    background-color: #eee;
+}
+</style>
+
+<script>
+// Função de autocomplete usando sua rota
+const input = document.getElementById('produto');
+const lista = document.getElementById('lista-produtos');
+
+input.addEventListener('input', () => {
+    const termo = input.value.trim();
+    if (termo.length === 0) {
+        lista.innerHTML = '';
+        return;
+    }
+
+    fetch(`/api/produtos?q=${encodeURIComponent(termo)}`)
+        .then(r => r.json())
+        .then(data => {
+            lista.innerHTML = '';
+            data.forEach(produto => {
+                const item = document.createElement('div');
+                item.classList.add('autocomplete-item');
+                item.textContent = `${produto.codigo} - ${produto.nome}`;
+                item.addEventListener('click', () => {
+                    input.value = produto.nome;
+                    lista.innerHTML = '';
+                });
+                lista.appendChild(item);
+            });
+        });
+});
+
+// Fecha lista se clicar fora
+document.addEventListener('click', (e) => {
+    if (e.target !== input) {
+        lista.innerHTML = '';
+    }
+});
+</script>
+{% endblock %}

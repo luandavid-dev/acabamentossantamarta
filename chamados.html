@@ -1,0 +1,1192 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+<div class="page">
+
+    <div class="header">
+
+        <div class="header-left">
+
+            <div class="header-badges">
+
+                <div class="badge-page">
+                    <i class="fa-solid fa-layer-group"></i>
+                    REQUERIMENTOS
+                </div>
+
+                <div class="badge-filial">
+                    <i class="fa-solid fa-list-check"></i>
+                    Central de Atendimento
+                </div>
+
+                <div class="badge-status">
+                    <i class="fa-solid fa-clock"></i>
+                    {{ chamados|length }} registro(s)
+                </div>
+
+            </div>
+
+            <h1 class="page-title">
+                Central de Requerimentos
+            </h1>
+
+            <p class="page-subtitle">
+                Acompanhe solicitações, monitore status e organize ocorrências de forma rápida e eficiente
+            </p>
+
+        </div>
+
+        <div class="header-actions">
+
+            <a
+                href="{{ url_for('abrir_chamado') }}"
+                class="btn-back"
+            >
+                <i class="fa-solid fa-plus"></i>
+                Novo Requerimento
+            </a>
+
+        </div>
+
+    </div>
+
+    {% set total_aberto = chamados|selectattr('status','equalto','Aberto')|list|length %}
+    {% set total_andamento = chamados|selectattr('status','equalto','Em andamento')|list|length %}
+    {% set total_concluido = chamados|selectattr('status','equalto','Concluído')|list|length %}
+
+    <div class="summary-grid">
+
+        <div class="summary-card stat-open">
+            <span><i class="fa-solid fa-folder-open"></i> Abertos</span>
+            <strong>{{ total_aberto }}</strong>
+        </div>
+
+        <div class="summary-card stat-progress">
+            <span><i class="fa-solid fa-spinner"></i> Em andamento</span>
+            <strong>{{ total_andamento }}</strong>
+        </div>
+
+        <div class="summary-card stat-done">
+            <span><i class="fa-solid fa-circle-check"></i> Concluídos</span>
+            <strong>{{ total_concluido }}</strong>
+        </div>
+
+    </div>
+
+    <!-- ============ FILTROS (CARD COLAPSÁVEL) ============ -->
+    <div class="card-form filter-card">
+
+        <button type="button" class="filter-toggle" id="filterToggle">
+
+            <div class="filter-toggle-left">
+
+                <div class="filter-icon">
+                    <i class="fa-solid fa-sliders"></i>
+                </div>
+
+                <div class="filter-info">
+                    <h3>
+                        <i class="fa-solid fa-filter"></i>
+                        Filtros avançados
+                    </h3>
+                    <p>Localize requerimentos com mais rapidez</p>
+                </div>
+
+            </div>
+
+            <div class="filter-arrow" id="filterArrow">
+                <i class="fa-solid fa-chevron-down"></i>
+            </div>
+
+        </button>
+
+        <div class="filter-body" id="filterBody">
+
+            <div class="form-grid filter-grid">
+
+                <div class="form-group">
+                    <label>Data Inicial</label>
+                    <input type="date" id="fDataIni">
+                </div>
+
+                <div class="form-group">
+                    <label>Data Final</label>
+                    <input type="date" id="fDataFim">
+                </div>
+
+                <div class="form-group">
+                    <label>Classificação</label>
+                    <select id="fClass">
+                        <option value="">Todas</option>
+                        <option>Quebras na Entrega</option>
+                        <option>Defeito de Fábrica</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Comprador</label>
+                    <select id="fComprador">
+                        <option value="">Todos</option>
+                        {% for c in chamados|map(attribute='tecnico')|unique %}
+                            {% if c %}
+                                <option>{{ c }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="fStatus">
+                        <option value="">Todos</option>
+                        <option>Aberto</option>
+                        <option>Em Andamento</option>
+                        <option>Concluído</option>
+                    </select>
+                </div>
+
+            </div>
+
+            <div class="form-actions">
+
+                <a href="#" id="btnLimpar" class="btn-cancel">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    Limpar
+                </a>
+
+                <button type="button" id="btnFiltrar" class="btn-save">
+                    <i class="fa-solid fa-filter"></i>
+                    Aplicar filtros
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ============ TABELA / EMPTY STATE ============ -->
+    {% if chamados %}
+
+    <div class="card-form table-card">
+
+        <div class="card-header">
+
+            <div>
+                <h3>
+                    <i class="fa-solid fa-table-list"></i>
+                    Lista de Requerimentos
+                </h3>
+
+                <p>
+                    Visualize, filtre e acesse o detalhamento de cada chamado
+                </p>
+            </div>
+
+            <div class="result-count" id="resultCount">
+                {{ chamados|length }} resultado(s)
+            </div>
+
+        </div>
+
+        <div class="table-wrap">
+
+            <table class="erp-table" id="tableChamados">
+
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Código</th>
+                        <th>Descrição</th>
+                        <th>Qtd</th>
+                        <th>Status</th>
+                        <th>Data</th>
+                        <th>Usuário</th>
+                        <th>Comprador</th>
+                        <th>Classificação</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for c in chamados %}
+                    {% set partes = c.titulo.split(' - ') %}
+
+                    <tr>
+
+                        <td data-label="#">
+                            <span class="id-pill">{{ c.id }}</span>
+                        </td>
+
+                        <td data-label="Código" class="cell-code">
+                            {{ partes[0] if partes|length>=3 else '-' }}
+                        </td>
+
+                        <td data-label="Descrição" class="cell-desc">
+                            {{ partes[1] if partes|length>=3 else '-' }}
+                        </td>
+
+                        <td data-label="Qtd" class="cell-qtd">
+                            {{ partes[2] if partes|length>=3 else '-' }}
+                        </td>
+
+                        <td data-label="Status">
+
+                            {% set s=c.status|lower %}
+
+                            {% if s=='aberto' %}
+                                <span class="badge-status-cell open">
+                                    <i class="fa-solid fa-folder-open"></i>
+                                    Aberto
+                                </span>
+                            {% elif s=='em andamento' %}
+                                <span class="badge-status-cell progress">
+                                    <i class="fa-solid fa-spinner"></i>
+                                    Em andamento
+                                </span>
+                            {% elif s=='concluído' %}
+                                <span class="badge-status-cell done">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    Concluído
+                                </span>
+                            {% else %}
+                                {{ c.status }}
+                            {% endif %}
+
+                        </td>
+
+                        <td data-label="Data">
+                            {{ c.data_abertura_fmt.split(' ')[0] }}
+                        </td>
+
+                        <td data-label="Usuário">
+                            {{ c.criador or '-' }}
+                        </td>
+
+                        <td data-label="Comprador">
+                            {{ c.tecnico or '-' }}
+                        </td>
+
+                        <td data-label="Classificação">
+                            {{ c.prioridade or '-' }}
+                        </td>
+
+                        <td data-label="Ação">
+
+                            <a
+                                class="btn-view"
+                                href="{{ url_for('visualizar_chamado', id=c.id) }}"
+                            >
+                                <i class="fa-solid fa-eye"></i>
+                                Ver
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    {% else %}
+
+    <div class="card-form empty-state">
+
+        <i class="fa-solid fa-folder-open"></i>
+
+        <h3>Nenhum requerimento encontrado</h3>
+
+        <p>
+            Não existem registros disponíveis para os filtros selecionados.
+        </p>
+
+        <a href="{{ url_for('abrir_chamado') }}" class="btn-save" style="margin-top:18px;">
+            <i class="fa-solid fa-plus"></i>
+            Abrir novo requerimento
+        </a>
+
+    </div>
+
+    {% endif %}
+
+</div>
+
+<style>
+
+:root{
+    --bg:#f3f7fc;
+    --surface:#ffffff;
+    --surface-soft:#f8fafc;
+    --primary:#0b3b75;
+    --primary-2:#1451a3;
+    --accent:#1565c0;
+    --success:#16a34a;
+    --success-bg:#dcfce7;
+    --danger:#dc2626;
+    --danger-bg:#fee2e2;
+    --warning:#d97706;
+    --warning-bg:#fef3c7;
+    --info-bg:#e8f1fd;
+    --border:#dbe7f5;
+    --text:#0f172a;
+    --muted:#64748b;
+    --shadow-sm:0 6px 18px rgba(11,59,117,.06);
+    --shadow-md:0 14px 36px rgba(11,59,117,.10);
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    background:linear-gradient(180deg,#f8fbff 0%,#eef4fb 100%);
+}
+
+.page{
+    max-width:1600px;
+    margin:0 auto;
+    padding:24px;
+    min-height:100vh;
+    font-family:Arial, Helvetica, sans-serif;
+    color:var(--text);
+}
+
+/* HEADER */
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:20px;
+    margin-bottom:20px;
+}
+
+.header-left{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.header-badges{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.badge-page,
+.badge-filial,
+.badge-status{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    width:max-content;
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:800;
+}
+
+.badge-page{
+    background:#dbeafe;
+    color:#1d4ed8;
+}
+
+.badge-filial{
+    background:#ecfdf5;
+    color:#166534;
+    border:1px solid #bbf7d0;
+}
+
+.badge-status{
+    background:var(--warning-bg);
+    color:#92400e;
+    border:1px solid #fde68a;
+}
+
+.page-title{
+    font-size:30px;
+    line-height:1.15;
+    color:var(--text);
+    font-weight:900;
+    margin:0;
+}
+
+.page-subtitle{
+    color:var(--muted);
+    font-size:14px;
+    margin:0;
+}
+
+.header-actions{
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.btn-back{
+    min-height:42px;
+    background:linear-gradient(135deg,var(--primary),var(--primary-2));
+    color:#fff;
+    padding:0 18px;
+    border-radius:13px;
+    text-decoration:none;
+    font-size:13px;
+    font-weight:800;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    box-shadow:0 10px 22px rgba(11,59,117,.18);
+    transition:.2s;
+    border:none;
+    cursor:pointer;
+}
+
+.btn-back:hover{
+    transform:translateY(-2px);
+}
+
+/* SUMMARY */
+.summary-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:14px;
+    margin-bottom:20px;
+}
+
+.summary-card{
+    background:#fff;
+    border:1px solid #e7eef8;
+    border-radius:18px;
+    padding:18px;
+    box-shadow:var(--shadow-sm);
+    min-width:0;
+    position:relative;
+    overflow:hidden;
+    transition:.25s;
+}
+
+.summary-card:hover{
+    transform:translateY(-2px);
+    box-shadow:var(--shadow-md);
+}
+
+.summary-card::before{
+    content:"";
+    position:absolute;
+    inset:0 auto 0 0;
+    width:5px;
+    background:var(--accent);
+}
+
+.summary-card.stat-open::before{background:#1d4ed8;}
+.summary-card.stat-progress::before{background:#d97706;}
+.summary-card.stat-done::before{background:var(--success);}
+
+.summary-card span{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:900;
+    text-transform:uppercase;
+    margin-bottom:8px;
+}
+
+.summary-card.stat-open span{color:#1d4ed8;}
+.summary-card.stat-progress span{color:#b45309;}
+.summary-card.stat-done span{color:#166534;}
+
+.summary-card strong{
+    display:block;
+    font-size:28px;
+    font-weight:900;
+    color:var(--text);
+    word-break:break-word;
+}
+
+/* CARD FORM (FILTRO + TABELA + EMPTY) */
+.card-form{
+    background:#fff;
+    border:1px solid #e7eef8;
+    border-radius:18px;
+    box-shadow:var(--shadow-md);
+    margin-bottom:20px;
+    overflow:hidden;
+}
+
+.card-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    padding:22px 24px;
+    border-bottom:1px solid #e7eef8;
+}
+
+.card-header h3{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:20px;
+    font-weight:900;
+    color:var(--text);
+    margin:0 0 4px;
+}
+
+.card-header h3 i{
+    color:var(--accent);
+}
+
+.card-header p{
+    color:var(--muted);
+    font-size:13px;
+    margin:0;
+}
+
+.result-count{
+    background:#dbeafe;
+    color:#1d4ed8;
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:900;
+    white-space:nowrap;
+    height:max-content;
+}
+
+/* FILTER (COLLAPSE) */
+.filter-card{
+    margin-bottom:20px;
+}
+
+.filter-toggle{
+    width:100%;
+    border:none;
+    background:none;
+    padding:20px 24px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    cursor:pointer;
+    transition:.25s;
+    font-family:inherit;
+    text-align:left;
+}
+
+.filter-toggle:hover{
+    background:#f8fafc;
+}
+
+.filter-toggle-left{
+    display:flex;
+    align-items:center;
+    gap:16px;
+}
+
+.filter-icon{
+    width:50px;
+    height:50px;
+    border-radius:14px;
+    background:linear-gradient(135deg,var(--primary),var(--primary-2));
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+    box-shadow:0 8px 18px rgba(11,59,117,.18);
+    flex-shrink:0;
+}
+
+.filter-info h3{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:18px;
+    font-weight:900;
+    color:var(--text);
+    margin:0 0 2px;
+}
+
+.filter-info h3 i{
+    color:var(--accent);
+    font-size:14px;
+}
+
+.filter-info p{
+    color:var(--muted);
+    font-size:12.5px;
+    margin:0;
+}
+
+.filter-arrow{
+    width:36px;
+    height:36px;
+    border-radius:10px;
+    background:#eef4fb;
+    color:var(--primary);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:.25s;
+}
+
+.filter-arrow.open{
+    transform:rotate(180deg);
+    background:var(--primary);
+    color:#fff;
+}
+
+.filter-body{
+    display:none;
+    padding:24px;
+    border-top:1px solid #e7eef8;
+    background:linear-gradient(to bottom,#fbfdff,#fff);
+}
+
+.filter-body.open{
+    display:block;
+}
+
+/* FORM GRID (FILTRO) */
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:16px;
+}
+
+.form-group{
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+}
+
+.form-group label{
+    margin-bottom:8px;
+    font-size:12px;
+    font-weight:900;
+    color:#334155;
+    text-transform:uppercase;
+}
+
+.form-group input,
+.form-group select{
+    width:100%;
+    height:50px;
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:0 14px;
+    background:var(--surface-soft);
+    font-size:14px;
+    color:var(--text);
+    transition:.2s;
+    font-family:inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus{
+    outline:none;
+    border-color:var(--accent);
+    background:#fff;
+    box-shadow:0 0 0 4px rgba(21,101,192,.10);
+}
+
+.form-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:12px;
+    margin-top:18px;
+    padding-top:18px;
+    border-top:1px solid #e7eef8;
+}
+
+.btn-save,
+.btn-cancel{
+    height:48px;
+    border-radius:14px;
+    padding:0 20px;
+    font-size:14px;
+    font-weight:900;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    transition:.2s;
+    border:none;
+    cursor:pointer;
+    font-family:inherit;
+}
+
+.btn-save{
+    background:#16a34a;
+    color:#fff;
+    box-shadow:0 10px 22px rgba(22,163,74,.18);
+}
+
+.btn-save:hover{
+    background:#15803d;
+    transform:translateY(-2px);
+}
+
+.btn-cancel{
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--primary);
+    text-decoration:none;
+}
+
+.btn-cancel:hover{
+    background:#eff6ff;
+    border-color:#bfdbfe;
+}
+
+/* TABELA */
+.table-card{
+    overflow:hidden;
+}
+
+.table-wrap{
+    width:100%;
+    overflow:auto;
+}
+
+.erp-table{
+    width:100%;
+    min-width:1200px;
+    border-collapse:separate;
+    border-spacing:0;
+}
+
+.erp-table thead{
+    background:linear-gradient(135deg,var(--primary),var(--primary-2));
+}
+
+.erp-table thead th{
+    padding:16px 14px;
+    font-size:11px;
+    color:#fff;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+    font-weight:900;
+    text-align:left;
+    white-space:nowrap;
+}
+
+.erp-table tbody tr{
+    transition:.18s;
+}
+
+.erp-table tbody tr:hover{
+    background:#f8fbff;
+}
+
+.erp-table tbody td{
+    padding:16px 14px;
+    border-bottom:1px solid #edf2f7;
+    font-size:13.5px;
+    color:var(--text);
+    vertical-align:middle;
+}
+
+.erp-table tbody tr:last-child td{
+    border-bottom:none;
+}
+
+.id-pill{
+    min-width:42px;
+    height:32px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 10px;
+    border-radius:999px;
+    background:#dbeafe;
+    color:#1d4ed8;
+    font-size:12px;
+    font-weight:900;
+}
+
+.cell-code{
+    font-weight:900;
+    color:var(--primary);
+    font-family:'Consolas','Courier New',monospace;
+    letter-spacing:.5px;
+}
+
+.cell-desc{
+    max-width:340px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+.cell-qtd{
+    font-weight:900;
+    color:var(--primary);
+    white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+}
+
+.badge-status-cell{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:7px 12px;
+    border-radius:999px;
+    font-size:11.5px;
+    font-weight:900;
+    letter-spacing:.3px;
+    white-space:nowrap;
+}
+
+.badge-status-cell.open{
+    background:#dbeafe;
+    color:#1d4ed8;
+}
+
+.badge-status-cell.progress{
+    background:var(--warning-bg);
+    color:#b45309;
+}
+
+.badge-status-cell.done{
+    background:var(--success-bg);
+    color:#166534;
+}
+
+.btn-view{
+    height:36px;
+    padding:0 14px;
+    border-radius:10px;
+    background:linear-gradient(135deg,var(--primary),var(--primary-2));
+    color:#fff;
+    font-size:12.5px;
+    font-weight:800;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    box-shadow:0 8px 16px rgba(11,59,117,.18);
+    transition:.22s;
+    white-space:nowrap;
+}
+
+.btn-view:hover{
+    transform:translateY(-2px);
+    box-shadow:0 12px 22px rgba(11,59,117,.26);
+}
+
+/* EMPTY */
+.empty-state{
+    padding:80px 24px;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+}
+
+.empty-state i{
+    font-size:48px;
+    color:#94a3b8;
+    margin-bottom:16px;
+}
+
+.empty-state h3{
+    font-size:22px;
+    color:var(--text);
+    margin:0 0 8px;
+    font-weight:900;
+}
+
+.empty-state p{
+    color:var(--muted);
+    font-size:14px;
+    margin:0;
+    max-width:420px;
+}
+
+/* RESPONSIVO */
+@media(max-width:1200px){
+
+    .form-grid{
+        grid-template-columns:repeat(3,minmax(0,1fr));
+    }
+
+}
+
+@media(max-width:900px){
+
+    .page{
+        padding:16px;
+    }
+
+    .header{
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    .header-actions,
+    .btn-back{
+        width:100%;
+    }
+
+    .summary-grid{
+        grid-template-columns:1fr;
+    }
+
+    .page-title{
+        font-size:26px;
+    }
+
+    .form-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+    .card-header{
+        flex-direction:column;
+    }
+
+}
+
+@media(max-width:640px){
+
+    .page{
+        padding:12px;
+    }
+
+    .header-badges{
+        width:100%;
+    }
+
+    .badge-page,
+    .badge-filial,
+    .badge-status{
+        width:100%;
+        justify-content:center;
+    }
+
+    .page-title{
+        font-size:24px;
+    }
+
+    .page-subtitle{
+        font-size:13px;
+    }
+
+    .form-grid{
+        grid-template-columns:1fr;
+    }
+
+    .form-actions{
+        flex-direction:column;
+    }
+
+    .btn-save,
+    .btn-cancel{
+        width:100%;
+    }
+
+    .filter-toggle{
+        padding:16px;
+    }
+
+    .filter-toggle-left{
+        gap:12px;
+    }
+
+    .filter-icon{
+        width:42px;
+        height:42px;
+        font-size:15px;
+    }
+
+    .filter-info h3{
+        font-size:15px;
+    }
+
+    /* TABELA RESPONSIVA - VIRA CARDS */
+    .erp-table{
+        min-width:0;
+    }
+
+    .erp-table thead{
+        display:none;
+    }
+
+    .erp-table,
+    .erp-table tbody,
+    .erp-table tr,
+    .erp-table td{
+        display:block;
+        width:100%;
+    }
+
+    .erp-table tbody{
+        padding:14px;
+    }
+
+    .erp-table tbody tr{
+        background:#fff;
+        border-radius:16px;
+        border:1px solid var(--border);
+        margin-bottom:14px;
+        overflow:hidden;
+        box-shadow:var(--shadow-sm);
+    }
+
+    .erp-table tbody td{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:14px;
+        padding:12px 16px;
+        border-bottom:1px solid #eef2f7;
+        text-align:right;
+        font-size:13px;
+    }
+
+    .erp-table tbody td:last-child{
+        border-bottom:none;
+    }
+
+    .erp-table tbody td::before{
+        content:attr(data-label);
+        font-size:11px;
+        font-weight:900;
+        text-transform:uppercase;
+        color:var(--primary);
+        text-align:left;
+        flex-shrink:0;
+    }
+
+    .cell-desc{
+        max-width:none;
+        white-space:normal;
+        text-align:right;
+    }
+
+}
+
+</style>
+
+<script>
+
+/* ===================================================== */
+/* TOGGLE DOS FILTROS                                     */
+/* ===================================================== */
+
+const filterToggle = document.getElementById('filterToggle');
+const filterBody   = document.getElementById('filterBody');
+const filterArrow  = document.getElementById('filterArrow');
+
+filterToggle.addEventListener('click', () => {
+    const aberto = filterBody.classList.toggle('open');
+    filterArrow.classList.toggle('open', aberto);
+});
+
+/* ===================================================== */
+/* NORMALIZAÇÃO                                           */
+/* ===================================================== */
+
+function norm(t){
+    return (t || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g,"")
+        .trim();
+}
+
+/* ===================================================== */
+/* FILTRAR                                                */
+/* ===================================================== */
+
+const fDataIni    = document.getElementById('fDataIni');
+const fDataFim    = document.getElementById('fDataFim');
+const fClass      = document.getElementById('fClass');
+const fComprador  = document.getElementById('fComprador');
+const fStatus     = document.getElementById('fStatus');
+const btnFiltrar  = document.getElementById('btnFiltrar');
+const btnLimpar   = document.getElementById('btnLimpar');
+const resultCount = document.getElementById('resultCount');
+const tabela      = document.getElementById('tableChamados');
+
+if(btnFiltrar){
+    btnFiltrar.addEventListener('click', () => {
+
+        const ini  = fDataIni.value;
+        const fim  = fDataFim.value;
+        const cl   = norm(fClass.value);
+        const comp = norm(fComprador.value);
+        const st   = norm(fStatus.value);
+
+        let visiveis = 0;
+
+        document.querySelectorAll('#tableChamados tbody tr').forEach(r => {
+
+            let ok = true;
+
+            const status    = norm(r.cells[4].innerText);
+            const comprador = norm(r.cells[7].innerText);
+            const classif   = norm(r.cells[8].innerText);
+
+            const d = r.cells[5].innerText.split('/');
+            const data = new Date(d[2], d[1]-1, d[0]);
+
+            if(st && status !== st) ok = false;
+            if(comp && comprador !== comp) ok = false;
+            if(cl && !classif.includes(cl)) ok = false;
+            if(ini && data < new Date(ini)) ok = false;
+
+            if(fim){
+                const f = new Date(fim);
+                f.setHours(23,59,59,999);
+                if(data > f) ok = false;
+            }
+
+            r.style.display = ok ? '' : 'none';
+            if(ok) visiveis++;
+        });
+
+        if(resultCount){
+            resultCount.textContent = visiveis + ' resultado(s)';
+        }
+    });
+}
+
+/* ===================================================== */
+/* LIMPAR                                                 */
+/* ===================================================== */
+
+if(btnLimpar){
+    btnLimpar.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        fDataIni.value   = '';
+        fDataFim.value   = '';
+        fClass.value     = '';
+        fComprador.value = '';
+        fStatus.value    = '';
+
+        const linhas = document.querySelectorAll('#tableChamados tbody tr');
+        linhas.forEach(r => r.style.display = '');
+
+        if(resultCount){
+            resultCount.textContent = linhas.length + ' resultado(s)';
+        }
+    });
+}
+
+</script>
+
+{% endblock %}

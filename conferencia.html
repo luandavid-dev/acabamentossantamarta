@@ -1,0 +1,1389 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<style>
+:root{
+  --bg:#f3f7fc;
+  --surface:#ffffff;
+  --surface-soft:#f8fafc;
+  --primary:#0b3b75;
+  --primary-2:#1451a3;
+  --accent:#1565c0;
+  --success:#16a34a;
+  --success-bg:#dcfce7;
+  --danger:#dc2626;
+  --danger-bg:#fee2e2;
+  --warning:#d97706;
+  --warning-bg:#fef3c7;
+  --info:#0284c7;
+  --info-bg:#e0f2fe;
+  --border:#dbe7f5;
+  --text:#0f172a;
+  --muted:#64748b;
+  --shadow-sm:0 6px 18px rgba(11,59,117,.06);
+  --shadow-md:0 14px 36px rgba(11,59,117,.10);
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  background:linear-gradient(180deg,#f8fbff 0%,#eef4fb 100%);
+  font-family:Arial, Helvetica, sans-serif;
+  color:var(--text);
+}
+
+.page-wrapper{
+  width:100%;
+  max-width:1750px;
+  margin:0 auto;
+  padding:24px;
+  min-height:100vh;
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.page-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:20px;
+  margin-bottom:22px;
+}
+
+.page-header-left{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.header-topline{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.badge-module{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 14px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+  background:#ecfdf5;
+  color:#166534;
+  border:1px solid #bbf7d0;
+}
+
+.page-header h1{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:0;
+  font-size:30px;
+  font-weight:900;
+  color:var(--text);
+}
+
+.page-header h1 i{
+  color:var(--accent);
+}
+
+.page-header span{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  color:var(--muted);
+  font-size:14px;
+}
+
+/* =========================
+   STATUS TOP
+========================= */
+
+.status-bar{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+  margin-bottom:20px;
+}
+
+.status-item{
+  background:var(--surface);
+  border:1px solid #e7eef8;
+  border-radius:18px;
+  padding:18px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  cursor:pointer;
+  box-shadow:var(--shadow-sm);
+  transition:.2s ease;
+}
+
+.status-item:hover{
+  transform:translateY(-2px);
+  box-shadow:0 14px 28px rgba(21,101,192,.12);
+}
+
+.status-left{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.status-icon{
+  width:52px;
+  height:52px;
+  border-radius:16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:20px;
+}
+
+.status-item strong{
+  font-size:28px;
+  line-height:1;
+}
+
+.status-item small{
+  display:block;
+  font-size:12px;
+  margin-bottom:5px;
+  font-weight:700;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+.status-item[data-status="Pendente"] .status-icon{
+  background:var(--warning-bg);
+  color:#92400e;
+}
+
+.status-item[data-status="Conferido"] .status-icon{
+  background:var(--success-bg);
+  color:#166534;
+}
+
+.status-item[data-status="Sem Divergência"] .status-icon{
+  background:#dbeafe;
+  color:#2563eb;
+}
+
+.status-item[data-status="Divergente"] .status-icon{
+  background:var(--danger-bg);
+  color:#991b1b;
+}
+
+/* =========================
+   FILTROS
+========================= */
+
+.filter-box{
+  background:var(--surface);
+  border:1px solid #e7eef8;
+  border-radius:18px;
+  margin-bottom:20px;
+  box-shadow:var(--shadow-sm);
+  overflow:hidden;
+}
+
+.filter-toggle{
+  width:100%;
+  min-height:58px;
+  padding:0 20px;
+  border:none;
+  background:#f8fafc;
+  font-weight:800;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  cursor:pointer;
+  font-size:13px;
+  color:var(--primary);
+}
+
+.filter-toggle span{
+  transition:.3s ease;
+}
+
+.filter-toggle.open span{
+  transform:rotate(180deg);
+}
+
+.filter-body{
+  display:none;
+  padding:16px;
+  border-top:1px solid #e7eef8;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+}
+
+.filter-field{
+  position:relative;
+}
+
+.filter-field i{
+  position:absolute;
+  left:13px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#94a3b8;
+  font-size:13px;
+  pointer-events:none;
+}
+
+.filter-body input,
+.filter-body select{
+  width:100%;
+  height:46px;
+  border:1px solid var(--border);
+  border-radius:13px;
+  background:var(--surface-soft);
+  padding:0 12px 0 38px;
+  font-size:13px;
+  color:var(--text);
+}
+
+.filter-body input:focus,
+.filter-body select:focus{
+  outline:none;
+  border-color:var(--accent);
+  background:#fff;
+  box-shadow:0 0 0 4px rgba(21,101,192,.10);
+}
+
+.filter-actions{
+  grid-column:span 5;
+  display:flex;
+  gap:10px;
+}
+
+.btn-action{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:42px;
+  padding:0 16px;
+  border-radius:12px;
+  border:none;
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  color:#fff;
+  text-decoration:none;
+  font-weight:800;
+  font-size:12px;
+  cursor:pointer;
+  transition:.2s ease;
+  box-shadow:0 10px 22px rgba(21,101,192,.14);
+}
+
+.btn-action:hover{
+  transform:translateY(-2px);
+}
+
+.btn-action.secondary{
+  background:#fff;
+  border:1px solid var(--border);
+  color:var(--primary);
+  box-shadow:none;
+}
+
+/* =========================
+   TABLE
+========================= */
+
+.table-wrap{
+  background:var(--surface);
+  border:1px solid #e7eef8;
+  border-radius:22px;
+  overflow:hidden;
+  box-shadow:var(--shadow-md);
+}
+
+.table-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:18px 20px;
+  border-bottom:1px solid #e7eef8;
+  background:linear-gradient(180deg,#f8fbff 0%,#eef5ff 100%);
+}
+
+.table-hint{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.table-hint i{
+  width:46px;
+  height:46px;
+  border-radius:14px;
+  background:#dbeafe;
+  color:#1d4ed8;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+}
+
+.table-title-group{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+
+.table-title-group strong{
+  font-size:16px;
+  font-weight:900;
+}
+
+.table-title-group span{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:700;
+}
+
+.table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+.table thead{
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  color:#fff;
+}
+
+.table th{
+  padding:15px 14px;
+  text-align:left;
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  white-space:nowrap;
+  letter-spacing:.5px;
+}
+
+.table td{
+  padding:15px 14px;
+  border-bottom:1px solid #eef2f7;
+  font-size:12px;
+  vertical-align:middle;
+}
+
+.table tbody tr{
+  transition:.2s ease;
+}
+
+.table tbody tr:hover{
+  background:#f8fbff;
+}
+
+.code-cell{
+  font-weight:900;
+  color:#0d47a1;
+  white-space:nowrap;
+}
+
+.muted-cell{
+  color:var(--muted);
+  font-weight:700;
+}
+
+.fornecedor-box,
+.date-box,
+.user-box{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.fornecedor-box i{
+  color:#2563eb;
+}
+
+.date-box i{
+  color:#0f766e;
+}
+
+.user-box i{
+  color:#7c3aed;
+}
+
+/* =========================
+   STATUS BUTTONS
+========================= */
+
+.status-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.status-btn{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  min-width:105px;
+  height:32px;
+  padding:0 10px;
+  border-radius:10px;
+  border:2px solid transparent;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.3px;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:.2s ease;
+  opacity:.42;
+  filter:saturate(.7);
+}
+
+.status-btn i{
+  font-size:10px;
+}
+
+.status-btn.active{
+  opacity:1;
+  filter:saturate(1);
+  transform:scale(1.02);
+  box-shadow:0 8px 18px rgba(15,23,42,.14);
+}
+
+.status-btn.warning{
+  background:#fff7ed;
+  color:#9a3412;
+  border-color:#fdba74;
+}
+
+.status-btn.warning.active{
+  background:linear-gradient(135deg,#f59e0b,#d97706);
+  color:#fff;
+}
+
+.status-btn.success{
+  background:#ecfdf5;
+  color:#166534;
+  border-color:#86efac;
+}
+
+.status-btn.success.active{
+  background:linear-gradient(135deg,#22c55e,#15803d);
+  color:#fff;
+}
+
+.status-btn.info{
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-color:#93c5fd;
+}
+
+.status-btn.info.active{
+  background:linear-gradient(135deg,#3b82f6,#1d4ed8);
+  color:#fff;
+}
+
+.status-btn.danger{
+  background:#fef2f2;
+  color:#b91c1c;
+  border-color:#fca5a5;
+}
+
+.status-btn.danger.active{
+  background:linear-gradient(135deg,#ef4444,#b91c1c);
+  color:#fff;
+}
+
+/* =========================
+   MOBILE CARDS
+========================= */
+
+.mobile-cards{
+  display:none;
+}
+
+.mobile-card{
+  background:var(--surface);
+  border:1px solid #e7eef8;
+  border-radius:20px;
+  padding:16px;
+  margin-bottom:16px;
+  box-shadow:var(--shadow-sm);
+}
+
+.mobile-card-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+.mobile-pedido{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.mobile-pedido strong{
+  font-size:18px;
+  color:#0d47a1;
+}
+
+.mobile-pedido span{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+}
+
+.mobile-info{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+.mobile-info-item{
+  background:#f8fbff;
+  border:1px solid #edf2f7;
+  border-radius:14px;
+  padding:12px;
+}
+
+.mobile-info-label{
+  font-size:11px;
+  text-transform:uppercase;
+  color:var(--muted);
+  font-weight:900;
+  margin-bottom:6px;
+}
+
+.mobile-info-value{
+  font-size:13px;
+  font-weight:700;
+  color:var(--text);
+  line-height:1.4;
+}
+
+.mobile-card .status-actions{
+  margin-top:12px;
+}
+
+.mobile-card .btn-action{
+  width:100%;
+  margin-top:14px;
+}
+
+/* =========================
+   TOAST
+========================= */
+
+.toast{
+  position:fixed;
+  bottom:20px;
+  right:20px;
+  padding:14px 18px;
+  border-radius:14px;
+  font-size:13px;
+  font-weight:700;
+  opacity:0;
+  transform:translateY(10px);
+  transition:.3s ease;
+  z-index:9999;
+  box-shadow:var(--shadow-md);
+}
+
+.toast.show{
+  opacity:1;
+  transform:none;
+}
+
+.toast.success{
+  background:linear-gradient(135deg,#16a34a,#15803d);
+  color:#fff;
+}
+
+.toast.error{
+  background:linear-gradient(135deg,#dc2626,#b91c1c);
+  color:#fff;
+}
+
+/* =========================
+   LOADING
+========================= */
+
+.loading-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,.72);
+  backdrop-filter:blur(2px);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9998;
+}
+
+.loading-overlay.show{
+  display:flex;
+}
+
+.loading-spinner{
+  width:54px;
+  height:54px;
+  border-radius:50%;
+  border:4px solid #dbeafe;
+  border-top-color:var(--accent);
+  animation:spin 1s linear infinite;
+}
+
+@keyframes spin{
+  to{
+    transform:rotate(360deg);
+  }
+}
+
+/* =========================
+   RESPONSIVO
+========================= */
+
+@media(max-width:1400px){
+
+  .status-btn{
+    min-width:95px;
+    font-size:8px;
+  }
+
+}
+
+@media(max-width:1200px){
+
+  .table-wrap{
+    overflow:auto;
+  }
+
+  .table{
+    min-width:1220px;
+  }
+
+}
+
+@media(max-width:980px){
+
+  .status-bar{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .filter-body{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  .filter-actions{
+    grid-column:span 2;
+  }
+
+}
+
+@media(max-width:760px){
+
+  .page-wrapper{
+    padding:12px;
+  }
+
+  .page-header{
+    flex-direction:column;
+  }
+
+  .status-bar{
+    grid-template-columns:1fr;
+  }
+
+  .filter-body{
+    grid-template-columns:1fr;
+  }
+
+  .filter-actions{
+    grid-column:span 1;
+    flex-direction:column;
+  }
+
+  .btn-action{
+    width:100%;
+  }
+
+  .status-btn{
+    width:100%;
+    min-width:100%;
+  }
+
+  .table-wrap{
+    display:none;
+  }
+
+  .mobile-cards{
+    display:block;
+  }
+
+  .status-actions{
+    flex-direction:column;
+  }
+
+}
+
+</style>
+
+<div class="page-wrapper">
+
+  <div class="page-header">
+
+    <div class="page-header-left">
+
+      <div class="header-topline">
+
+        <div class="badge-module">
+          <i class="fa-solid fa-clipboard-check"></i>
+          Conferência Operacional
+        </div>
+
+      </div>
+
+      <h1>
+        <i class="fa-solid fa-cart-flatbed"></i>
+        Pedidos de Compra
+      </h1>
+
+      <span>
+        <i class="fa-solid fa-chart-line"></i>
+        Conferência e acompanhamento operacional de pedidos
+      </span>
+
+    </div>
+
+  </div>
+
+  {% set counts = {
+    'Pendente': pedidos|selectattr("STATUS","equalto","Pendente")|list|length,
+    'Conferido': pedidos|selectattr("STATUS","equalto","Conferido")|list|length,
+    'Sem Divergência': pedidos|selectattr("STATUS","equalto","Sem Divergência")|list|length,
+    'Divergente': pedidos|selectattr("STATUS","equalto","Divergente")|list|length
+  } %}
+
+  <div class="status-bar">
+
+    {% for s,c in counts.items() %}
+
+    <div class="status-item" data-status="{{ s }}">
+
+      <div class="status-left">
+
+        <div class="status-icon">
+
+          {% if s == 'Pendente' %}
+            <i class="fa-solid fa-clock"></i>
+          {% elif s == 'Conferido' %}
+            <i class="fa-solid fa-circle-check"></i>
+          {% elif s == 'Sem Divergência' %}
+            <i class="fa-solid fa-check-double"></i>
+          {% else %}
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          {% endif %}
+
+        </div>
+
+        <div>
+          <small>{{ s }}</small>
+          <strong>{{ c }}</strong>
+        </div>
+
+      </div>
+
+    </div>
+
+    {% endfor %}
+
+  </div>
+
+  <!-- FILTROS -->
+
+  <div class="filter-box">
+
+    <button type="button" class="filter-toggle">
+
+      <div style="display:flex;align-items:center;gap:8px;">
+        <i class="fa-solid fa-filter"></i>
+        Filtros avançados
+      </div>
+
+      <span>
+        <i class="fa-solid fa-chevron-down"></i>
+      </span>
+
+    </button>
+
+    <form method="GET" class="filter-body">
+
+      <div class="filter-field">
+        <i class="fa-solid fa-box"></i>
+        <input name="produto" placeholder="Produto" value="{{ produto or '' }}">
+      </div>
+
+      <div class="filter-field">
+        <i class="fa-solid fa-barcode"></i>
+        <input name="pedido" placeholder="Pedido" value="{{ pedido or '' }}">
+      </div>
+
+      <div class="filter-field">
+        <i class="fa-solid fa-truck"></i>
+        <input name="fornecedor" placeholder="Fornecedor" value="{{ fornecedor or '' }}">
+      </div>
+
+      <div class="filter-field">
+        <i class="fa-solid fa-calendar"></i>
+        <input type="date" name="data_inicio" value="{{ data_inicio or '' }}">
+      </div>
+
+      <div class="filter-field">
+        <i class="fa-solid fa-calendar"></i>
+        <input type="date" name="data_fim" value="{{ data_fim or '' }}">
+      </div>
+
+      <div class="filter-field">
+        <i class="fa-solid fa-calendar-days"></i>
+        <input type="date" name="previsao_inicio" value="{{ previsao_inicio or '' }}">
+      </div>
+
+      <div class="filter-field">
+        <i class="fa-solid fa-calendar-days"></i>
+        <input type="date" name="previsao_fim" value="{{ previsao_fim or '' }}">
+      </div>
+
+      <div class="filter-field">
+
+        <i class="fa-solid fa-bolt"></i>
+
+        <select name="previsao_rapida">
+
+          <option value="">Previsão rápida</option>
+
+          <option value="hoje" {% if request.args.get('previsao_rapida')=='hoje' %}selected{% endif %}>
+            Hoje
+          </option>
+
+          <option value="amanha" {% if request.args.get('previsao_rapida')=='amanha' %}selected{% endif %}>
+            Amanhã
+          </option>
+
+          <option value="semana" {% if request.args.get('previsao_rapida')=='semana' %}selected{% endif %}>
+            Semana
+          </option>
+
+          <option value="mes" {% if request.args.get('previsao_rapida')=='mes' %}selected{% endif %}>
+            Mês
+          </option>
+
+        </select>
+
+      </div>
+
+      <div class="filter-actions">
+
+        <button class="btn-action" type="submit">
+          <i class="fa-solid fa-filter"></i>
+          Aplicar filtros
+        </button>
+
+        <a class="btn-action secondary" href="{{ url_for('conferencia') }}">
+          <i class="fa-solid fa-rotate-left"></i>
+          Limpar filtros
+        </a>
+
+      </div>
+
+    </form>
+
+  </div>
+
+  <!-- DESKTOP TABLE -->
+
+  <div class="table-wrap">
+
+    <div class="table-toolbar">
+
+      <div class="table-hint">
+
+        <i class="fa-solid fa-circle-info"></i>
+
+        <div class="table-title-group">
+          <strong>Controle Operacional</strong>
+          <span>Status colorido com visual rápido e alinhado</span>
+        </div>
+
+      </div>
+
+    </div>
+
+    <table class="table">
+
+      <thead>
+        <tr>
+          <th>Pedido</th>
+          <th>Data</th>
+          <th>Fornecedor</th>
+          <th>Previsão</th>
+          <th>Status Operacional</th>
+          <th>Chegada</th>
+          <th>Conferente</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        {% for p in pedidos %}
+
+        <tr>
+
+          <td class="code-cell">
+            <strong>#{{ p.NUMPED }}</strong>
+          </td>
+
+          <td class="muted-cell">
+            {{ p.DATA_PEDIDO }}
+          </td>
+
+          <td>
+
+            <div class="fornecedor-box">
+              <i class="fa-solid fa-truck-fast"></i>
+              {{ p.FORNECEDOR }}
+            </div>
+
+          </td>
+
+          <td class="muted-cell">
+
+            <div class="date-box">
+              <i class="fa-solid fa-calendar-check"></i>
+              {{ p.PREVISAO_ENTREGA or '-' }}
+            </div>
+
+          </td>
+
+          <td>
+
+            <div
+              class="status-actions"
+              data-numped="{{ p.NUMPED }}"
+              data-status="{{ p.STATUS }}"
+            >
+
+              <button
+                type="button"
+                class="status-btn warning {% if p.STATUS=='Pendente' %}active{% endif %}"
+                data-status="Pendente"
+              >
+                <i class="fa-solid fa-clock"></i>
+                Pendente
+              </button>
+
+              <button
+                type="button"
+                class="status-btn success {% if p.STATUS=='Conferido' %}active{% endif %}"
+                data-status="Conferido"
+              >
+                <i class="fa-solid fa-circle-check"></i>
+                Conferido
+              </button>
+
+              {% if user_is_admin %}
+
+              <button
+                type="button"
+                class="status-btn info {% if p.STATUS=='Sem Divergência' %}active{% endif %}"
+                data-status="Sem Divergência"
+              >
+                <i class="fa-solid fa-shield-check"></i>
+                Sem Divergência
+              </button>
+
+              <button
+                type="button"
+                class="status-btn danger {% if p.STATUS=='Divergente' %}active{% endif %}"
+                data-status="Divergente"
+              >
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Divergente
+              </button>
+
+              {% endif %}
+
+            </div>
+
+          </td>
+
+          <td class="muted-cell">
+
+            <div class="date-box">
+              <i class="fa-solid fa-box-open"></i>
+              {{ p.DATA_CHEGADA or '-' }}
+            </div>
+
+          </td>
+
+          <td class="muted-cell">
+
+            <div class="user-box">
+              <i class="fa-solid fa-user-check"></i>
+              {{ p.USUARIO_CONFERENCIA or '-' }}
+            </div>
+
+          </td>
+
+          <td>
+
+            <a
+              class="btn-action"
+              href="{{ url_for('conferencia_itens', num_pedido=p.NUMPED) }}"
+            >
+              <i class="fas fa-eye"></i>
+              Ver
+            </a>
+
+          </td>
+
+        </tr>
+
+        {% endfor %}
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+  <!-- MOBILE CARDS -->
+
+  <div class="mobile-cards">
+
+    {% for p in pedidos %}
+
+    <div class="mobile-card">
+
+      <div class="mobile-card-top">
+
+        <div class="mobile-pedido">
+          <strong>#{{ p.NUMPED }}</strong>
+          <span>{{ p.DATA_PEDIDO }}</span>
+        </div>
+
+      </div>
+
+      <div class="mobile-info">
+
+        <div class="mobile-info-item">
+          <div class="mobile-info-label">
+            Fornecedor
+          </div>
+
+          <div class="mobile-info-value">
+            <div class="fornecedor-box">
+              <i class="fa-solid fa-truck-fast"></i>
+              {{ p.FORNECEDOR }}
+            </div>
+          </div>
+        </div>
+
+        <div class="mobile-info-item">
+          <div class="mobile-info-label">
+            Previsão
+          </div>
+
+          <div class="mobile-info-value">
+            <div class="date-box">
+              <i class="fa-solid fa-calendar-check"></i>
+              {{ p.PREVISAO_ENTREGA or '-' }}
+            </div>
+          </div>
+        </div>
+
+        <div class="mobile-info-item">
+          <div class="mobile-info-label">
+            Chegada
+          </div>
+
+          <div class="mobile-info-value">
+            <div class="date-box">
+              <i class="fa-solid fa-box-open"></i>
+              {{ p.DATA_CHEGADA or '-' }}
+            </div>
+          </div>
+        </div>
+
+        <div class="mobile-info-item">
+          <div class="mobile-info-label">
+            Conferente
+          </div>
+
+          <div class="mobile-info-value">
+            <div class="user-box">
+              <i class="fa-solid fa-user-check"></i>
+              {{ p.USUARIO_CONFERENCIA or '-' }}
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div
+        class="status-actions"
+        data-numped="{{ p.NUMPED }}"
+        data-status="{{ p.STATUS }}"
+      >
+
+        <button
+          type="button"
+          class="status-btn warning {% if p.STATUS=='Pendente' %}active{% endif %}"
+          data-status="Pendente"
+        >
+          <i class="fa-solid fa-clock"></i>
+          Pendente
+        </button>
+
+        <button
+          type="button"
+          class="status-btn success {% if p.STATUS=='Conferido' %}active{% endif %}"
+          data-status="Conferido"
+        >
+          <i class="fa-solid fa-circle-check"></i>
+          Conferido
+        </button>
+
+        {% if user_is_admin %}
+
+        <button
+          type="button"
+          class="status-btn info {% if p.STATUS=='Sem Divergência' %}active{% endif %}"
+          data-status="Sem Divergência"
+        >
+          <i class="fa-solid fa-shield-check"></i>
+          Sem Divergência
+        </button>
+
+        <button
+          type="button"
+          class="status-btn danger {% if p.STATUS=='Divergente' %}active{% endif %}"
+          data-status="Divergente"
+        >
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          Divergente
+        </button>
+
+        {% endif %}
+
+      </div>
+
+      <a
+        class="btn-action"
+        href="{{ url_for('conferencia_itens', num_pedido=p.NUMPED) }}"
+      >
+        <i class="fas fa-eye"></i>
+        Ver Pedido
+      </a>
+
+    </div>
+
+    {% endfor %}
+
+  </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<div id="loadingOverlay" class="loading-overlay">
+  <div class="loading-spinner"></div>
+</div>
+
+<script>
+
+const filterToggle=document.querySelector('.filter-toggle');
+const filterBody=document.querySelector('.filter-body');
+
+filterToggle.onclick=()=>{
+
+  filterBody.style.display=
+    filterBody.style.display==='grid'
+    ?'none'
+    :'grid';
+
+  filterToggle.classList.toggle('open');
+
+};
+
+function toast(msg,type='success'){
+
+  const t=document.getElementById('toast');
+
+  t.className=`toast ${type} show`;
+
+  t.innerText=msg;
+
+  setTimeout(()=>{
+    t.classList.remove('show');
+  },2500);
+
+}
+
+function loading(show=true){
+
+  document
+    .getElementById('loadingOverlay')
+    .classList.toggle('show',show);
+
+}
+
+document.querySelectorAll('.status-actions').forEach(group=>{
+
+  group.addEventListener('click',e=>{
+
+    const btn=e.target.closest('.status-btn');
+
+    if(!btn){
+      return;
+    }
+
+    e.preventDefault();
+
+    e.stopPropagation();
+
+    const novo=btn.dataset.status;
+
+    const numped=group.dataset.numped;
+
+    const atual=group.dataset.status;
+
+    const tipo="{{ user_tipo }}";
+
+    if(
+      tipo==="usuario"
+      &&
+      !(atual==="Pendente" && novo==="Conferido")
+    ){
+      return;
+    }
+
+    btn.disabled=true;
+
+    btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Salvando';
+
+    loading(true);
+
+    fetch("{{ url_for('salvar_status') }}",{
+
+      method:"POST",
+
+      headers:{
+        'Content-Type':'application/x-www-form-urlencoded'
+      },
+
+      body:`numped=${numped}&status=${encodeURIComponent(novo)}`
+
+    })
+
+    .then(r=>r.json())
+
+    .then(res=>{
+
+      if(res.sucesso){
+
+        group.dataset.status=novo;
+
+        group.querySelectorAll('.status-btn').forEach(b=>{
+
+          b.classList.remove('active');
+
+          b.disabled=false;
+
+          const icon=
+            b.dataset.status==="Pendente"
+            ?'fa-clock'
+            :b.dataset.status==="Conferido"
+            ?'fa-circle-check'
+            :b.dataset.status==="Sem Divergência"
+            ?'fa-shield-check'
+            :'fa-triangle-exclamation';
+
+          b.innerHTML=`<i class="fa-solid ${icon}"></i> ${b.dataset.status}`;
+
+        });
+
+        btn.classList.add('active');
+
+        toast("Status atualizado com sucesso");
+
+      }else{
+
+        btn.disabled=false;
+
+        toast(
+          res.erro || "Erro ao salvar status",
+          "error"
+        );
+
+      }
+
+    })
+
+    .catch(()=>{
+
+      btn.disabled=false;
+
+      toast(
+        "Falha de comunicação",
+        "error"
+      );
+
+    })
+
+    .finally(()=>{
+
+      loading(false);
+
+    });
+
+  });
+
+});
+
+document.querySelectorAll('.status-item').forEach(i=>{
+
+  i.onclick=()=>{
+
+    const u=new URL(window.location);
+
+    u.searchParams.set(
+      'status',
+      i.dataset.status
+    );
+
+    window.location=u;
+
+  };
+
+});
+
+</script>
+
+{% endblock %}

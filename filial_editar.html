@@ -1,0 +1,33 @@
+<style>html,body,input,button,select,textarea{font-family:"DM Sans",system-ui,sans-serif !important;}</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="card">
+  <h3>Editar Filial</h3>
+  <form method="POST" action="{{ url_for('editar_filial', id=filial.id) }}">
+    <label>Nome</label>
+    <input type="text" name="nome" class="input" value="{{ filial.nome }}" required>
+
+    <label>Endereço</label>
+    <input type="text" name="endereco" class="input" value="{{ filial.endereco or '' }}">
+
+    <label>Cidade</label>
+    <input type="text" name="cidade" class="input" value="{{ filial.cidade or '' }}">
+
+    <label>Estado</label>
+    <input type="text" name="estado" class="input" value="{{ filial.estado or '' }}">
+
+    <label>Telefone</label>
+    <input type="text" name="telefone" class="input" value="{{ filial.telefone or '' }}">
+
+    <div style="margin-top: 15px;">
+      <button class="btn-primary" type="submit">Salvar Alterações</button>
+      <a href="{{ url_for('listar_filiais') }}" class="btn">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
