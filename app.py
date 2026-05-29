@@ -4364,10 +4364,12 @@ def api_conferencia_pendentes():
     except Exception:
         return jsonify({"total": 0})
 
-```dockerfile id="h8pr5d"
-CMD ["gunicorn", "--bind", "0.0.0.0:10000", "app:app"]
-```
-
+if __name__ == '__main__':
+    # O Render injeta a porta automaticamente na variável de ambiente PORT
+    port = int(os.environ.get("PORT", 10000))
+    
+    # IMPORTANTE: host deve ser '0.0.0.0' e debug deve ser False em produção
+    app.run(host='0.0.0.0', port=port, debug=False)
 
 
 
