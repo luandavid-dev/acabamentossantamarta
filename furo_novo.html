@@ -1,0 +1,84 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
+    <div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+            <a href="{{ url_for('furo_estoque') }}" style="color: var(--text-muted);"><i class="fa-solid fa-arrow-left"></i> Voltar</a>
+            <span style="color: var(--border-color);">|</span>
+            <span class="badge badge-info">Novo Registro</span>
+        </div>
+        <h1 style="font-size: 1.875rem; font-weight: 700; color: var(--primary);">Registrar Ajuste de Estoque</h1>
+    </div>
+</div>
+
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <form action="{{ url_for('novo_furo') }}" method="POST">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+            <div style="grid-column: span 2;">
+                <label class="form-label" style="font-weight: 700;">Produto</label>
+                <select name="codprod" class="form-control" required style="width: 100%;">
+                    <option value="">Selecione o produto...</option>
+                    {% for p in produtos %}
+                    <option value="{{ p.CODPROD }}">{{ p.CODPROD }} - {{ p.DESCRICAO }}</option>
+                    {% endfor %}
+                </select>
+                <p style="font-size: 0.75rem; color: var(--text-muted); mt-1">Dica: Você pode digitar o código ou nome para filtrar.</p>
+            </div>
+            
+            <div>
+                <label class="form-label" style="font-weight: 700;">Quantidade de Furo</label>
+                <input type="number" name="quantidade" class="form-control" placeholder="Ex: 5" required>
+            </div>
+            
+            <div>
+                <label class="form-label" style="font-weight: 700;">Filial</label>
+                <select name="filial_id" class="form-control" required>
+                    {% for f in filiais %}
+                    <option value="{{ f.id }}" {% if session.get('filial_id') == f.id %}selected{% endif %}>{{ f.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="grid-column: span 2;">
+                <label class="form-label" style="font-weight: 700;">Observação / Motivo</label>
+                <textarea name="observacao" class="form-control" rows="4" placeholder="Descreva o motivo da divergência..." required></textarea>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+            <a href="{{ url_for('furo_estoque') }}" class="btn" style="background: #f1f5f9; color: var(--text-main);">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-floppy-disk"></i> Salvar Ajuste
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Scripts para Select2 se necessário, ou apenas busca nativa -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('select[name="codprod"]').select2({
+            placeholder: "Pesquise por código ou nome do produto",
+            allowClear: true
+        });
+    });
+</script>
+<style>
+    .select2-container--default .select2-selection--single {
+        height: 46px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 44px;
+    }
+</style>
+{% endblock %}

@@ -8,6 +8,7 @@
 <div class="card">
   <h3>Nova Filial</h3>
   <form method="POST" action="{{ url_for('nova_filial') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <input name="nome" class="input" placeholder="Nome" required>
     <input name="endereco" class="input" placeholder="Endereço">
     <input name="cidade" class="input" placeholder="Cidade">

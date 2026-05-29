@@ -1,0 +1,95 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
+    <div>
+        <h1 style="font-size: 1.875rem; font-weight: 700; color: var(--primary); margin-bottom: 0.25rem;">Acompanhamento de Compras</h1>
+        <p style="color: var(--text-muted); font-size: 0.875rem;">Monitore o status dos pedidos de compra e requerimentos integrados.</p>
+    </div>
+</div>
+
+<!-- Resumo de Compras -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+    <div class="card" style="border-left: 4px solid var(--warning);">
+        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">Pedidos Pendentes</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">{{ pedidos_pendentes|length }}</div>
+    </div>
+    <div class="card" style="border-left: 4px solid var(--info);">
+        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">Em Trânsito</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">{{ pedidos_transito|length }}</div>
+    </div>
+    <div class="card" style="border-left: 4px solid var(--success);">
+        <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem;">Recebidos (Mês)</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">{{ pedidos_recebidos_mes|length }}</div>
+    </div>
+</div>
+
+<!-- Lista de Compras -->
+<div class="card" style="padding: 0;">
+    <div style="padding: 1.25rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="font-size: 1rem; font-weight: 700;">Pedidos Recentes</h3>
+        <div style="display: flex; gap: 0.5rem;">
+             <input type="text" id="filtroCompras" class="form-control" placeholder="Filtrar pedidos..." style="width: 250px; height: 36px; font-size: 0.8125rem;">
+        </div>
+    </div>
+    
+    <div class="table-container">
+        <table id="tabelaCompras">
+            <thead>
+                <tr>
+                    <th style="width: 100px;">Pedido</th>
+                    <th>Fornecedor</th>
+                    <th>Data Pedido</th>
+                    <th>Previsão</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pedidos %}
+                <tr>
+                    <td style="font-weight: 700; color: var(--accent);">#{{ p.NUMPED }}</td>
+                    <td>
+                        <div style="font-weight: 600; font-size: 0.875rem;">{{ p.FORNECEDOR }}</div>
+                    </td>
+                    <td style="font-size: 0.8125rem;">{{ p.DATA_PEDIDO }}</td>
+                    <td style="font-size: 0.8125rem; color: var(--text-muted);">{{ p.PREVISAO_ENTREGA }}</td>
+                    <td>
+                        {% set s = p.STATUS | lower %}
+                        {% if s == 'pendente' %}
+                            <span class="badge badge-warning">Pendente</span>
+                        {% elif s == 'em trânsito' %}
+                            <span class="badge badge-info">Em Trânsito</span>
+                        {% elif s == 'recebido' %}
+                            <span class="badge badge-success">Recebido</span>
+                        {% else %}
+                            <span class="badge" style="background: #f1f5f9; color: #64748b;">{{ p.STATUS }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        <a href="{{ url_for('ver_pedido_compra', id=p.NUMPED) }}" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.75rem; background: #f1f5f9; color: var(--primary); border: 1px solid var(--border-color);">
+                            <i class="fa-solid fa-eye"></i> Ver Detalhes
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 4rem 2rem; color: var(--text-muted);">
+                        Nenhum pedido de compra registrado.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    document.getElementById('filtroCompras').addEventListener('keyup', function() {
+        const val = this.value.toLowerCase();
+        document.querySelectorAll('#tabelaCompras tbody tr').forEach(tr => {
+            tr.style.display = tr.innerText.toLowerCase().includes(val) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}

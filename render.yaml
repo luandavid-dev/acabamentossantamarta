@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: controle-estoque
+    env: docker
+    plan: free
+    region: oregon
+    envVars:
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PORT
+        value: "8080"
+      - key: ERP_DB_SERVER
+        value: "192.168.3.32"
+      - key: ERP_DB_NAME
+        value: "BDENTER"
+      - key: ERP_DB_USER
+        value: "microuni"
+      - key: ERP_DB_PASSWORD
+        value: "microuni"
+      - key: ERP_ODBC_DRIVER
+        value: "ODBC Driver 17 for SQL Server"

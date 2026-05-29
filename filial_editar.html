@@ -9,6 +9,7 @@
 <div class="card">
   <h3>Editar Filial</h3>
   <form method="POST" action="{{ url_for('editar_filial', id=filial.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
     <label>Nome</label>
     <input type="text" name="nome" class="input" value="{{ filial.nome }}" required>
 

@@ -1,376 +1,85 @@
-﻿<!doctype html>
+﻿<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon.png') }}">
-
-    <title>Santa Marta Telhas & Acabamentos — Acesso ao Sistema</title>
-
+    <title>Login | Sistema de Gestão Santa Marta</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
     <style>
-    /* ==========================================================================
-       DESIGN SYSTEM CORPORATIVO & PALETA EXATA DA SIDEBAR
-       ========================================================================== */
-    :root {
-        --azul-escuro: #002b5c;
-        --azul-medio: #1565C0;
-        
-        --bg-gradient-end: #001a38; /* Base de profundidade da barra lateral */
-        --surface: #ffffff;
-        --border-color: #e2e8f0;
-        --border-focus: #1565C0;
-        
-        --text-main: #0f172a;
-        --text-muted: #64748b;
-        
-        --danger-bg: #fff1f2;
-        --danger-text: #9f1239;
-        --danger-border: #fecdd3;
-        
-        --success-bg: #ecfdf5;
-        --success-text: #065f46;
-        --success-border: #a7f3d0;
-
-        --radius-md: 10px;
-        --radius-lg: 14px;
-        --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        --shadow-premium: 0 20px 25px -5px rgba(0, 26, 56, 0.15), 0 10px 10px -5px rgba(0, 26, 56, 0.08);
-    }
-
-    * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-    }
-
-    html, body {
-        width: 100%;
-        height: 100%;
-        overflow-x: hidden;
-    }
-
-    body {
-        min-height: 100vh;
-        font-family: "DM Sans", system-ui, -apple-system, sans-serif;
-        background: radial-gradient(circle at top right, rgba(21, 101, 192, 0.2), transparent 60%), 
-                    linear-gradient(135deg, var(--azul-escuro), var(--bg-gradient-end));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24px;
-        color: var(--text-main);
-        -webkit-font-smoothing: antialiased;
-    }
-
-    /* ==========================================================================
-       CONTAINER DO CARD (GEOMETRIA LIMPA / HIGH-FIDELITY)
-       ========================================================================== */
-    .login-card {
-        width: 100%;
-        max-width: 410px;
-        background: var(--surface);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: var(--radius-lg);
-        padding: 40px 32px;
-        text-align: center;
-        box-shadow: var(--shadow-premium);
-        animation: cardFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    @keyframes cardFadeUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    .login-logo {
-        max-width: 130px;
-        height: auto;
-        margin-bottom: 28px;
-        display: inline-block;
-    }
-
-    .login-title {
-        margin-bottom: 20px;
-    }
-
-    .login-title .main {
-        display: block;
-        font-size: 20px;
-        font-weight: 800;
-        color: var(--azul-escuro);
-        letter-spacing: -0.02em;
-        text-transform: uppercase;
-        margin-bottom: 6px;
-    }
-
-    .login-title .sub {
-        display: block;
-        font-size: 13px;
-        font-weight: 500;
-        color: var(--text-muted);
-        line-height: 1.4;
-    }
-
-    /* Componente de Data Semântico (Estilo Terminal Limpo) */
-    #loginDate {
-        display: inline-block;
-        min-height: 22px;
-        font-family: "DM Mono", monospace;
-        font-size: 11px;
-        color: var(--azul-medio);
-        background: rgba(21, 101, 192, 0.06);
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-weight: 600;
-        margin-bottom: 24px;
-        text-transform: capitalize;
-    }
-
-    /* ==========================================================================
-       MENSAGENS FLASH (NOTIFICAÇÕES ADAPTADAS)
-       ========================================================================== */
-    .flash {
-        margin-bottom: 20px;
-        padding: 12px 16px;
-        border-radius: var(--radius-md);
-        font-size: 13px;
-        font-weight: 600;
-        text-align: left;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        border: 1px solid transparent;
-        animation: cardFadeUp 0.2s ease-out;
-    }
-
-    .flash.success {
-        background: var(--success-bg);
-        color: var(--success-text);
-        border-color: var(--success-border);
-    }
-
-    .flash.error,
-    .flash.danger {
-        background: var(--danger-bg);
-        color: var(--danger-text);
-        border-color: var(--danger-border);
-    }
-
-    /* ==========================================================================
-       FORMULÁRIOS E INPUTS DE ALTA ERGONOMIA
-       ========================================================================== */
-    .input-container {
-        position: relative;
-        margin-bottom: 16px;
-    }
-
-    .input-container input {
-        width: 100%;
-        height: 48px;
-        padding: 0 44px 0 16px;
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border-color);
-        background: #f8fafc;
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--text-main);
-        transition: var(--transition);
-        outline: none;
-    }
-
-    .input-container input:focus {
-        border-color: var(--border-focus);
-        background: var(--surface);
-        box-shadow: 0 0 0 3px rgba(21, 101, 192, 0.15);
-    }
-
-    /* Placeholder sofisticado */
-    .input-container input::placeholder {
-        color: #94a3b8;
-        font-weight: 400;
-    }
-
-    .input-container i {
-        position: absolute;
-        right: 16px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #a0aec0;
-        font-size: 14px;
-        transition: var(--transition);
-        pointer-events: none;
-    }
-
-    .input-container input:focus ~ i {
-        color: var(--azul-medio);
-    }
-
-    /* Botão de Ação Principal (Mesmo Gradiente Dinâmico da Sidebar) */
-    .btn-primary {
-        width: 100%;
-        height: 48px;
-        margin-top: 8px;
-        border: none;
-        border-radius: var(--radius-md);
-        background: linear-gradient(135deg, var(--azul-escuro), var(--azul-medio));
-        color: #fff;
-        font-weight: 700;
-        font-size: 14px;
-        letter-spacing: 0.02em;
-        cursor: pointer;
-        transition: var(--transition);
-        box-shadow: 0 4px 12px rgba(0, 43, 92, 0.2);
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(0, 43, 92, 0.3);
-        filter: brightness(1.08);
-    }
-
-    .btn-primary:active {
-        transform: translateY(0);
-    }
-
-    /* Rodapé Informativo */
-    .footer {
-        font-size: 12px;
-        color: var(--text-muted);
-        line-height: 1.6;
-        margin-top: 32px;
-        border-top: 1px solid var(--border-color);
-        padding-top: 20px;
-    }
-
-    .footer strong {
-        color: var(--azul-escuro);
-        font-weight: 700;
-    }
-
-    /* ==========================================================================
-       ADAPTAÇÃO E SUPORTE MOBILE DISCRETO
-       ========================================================================== */
-    @media (max-width: 500px) {
         body {
-            padding: 16px;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            margin: 0;
         }
-
         .login-card {
-            padding: 32px 24px;
-            border-radius: var(--radius-md);
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            animation: fadeIn 0.5s ease-out;
         }
-
-        .login-logo {
-            max-width: 110px;
-            margin-bottom: 24px;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-
-        .login-title .main {
-            font-size: 18px;
-        }
-    }
     </style>
 </head>
-
 <body>
+    <div class="login-card">
+        <div style="padding: 2.5rem 2rem 1.5rem; text-align: center; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="height: 60px; margin-bottom: 1.5rem; border-radius: 8px;">
+            <h1 style="font-size: 1.25rem; font-weight: 700; color: #0f172a;">Acesse sua conta</h1>
+            <p style="color: #64748b; font-size: 0.875rem; margin-top: 0.5rem;">Sistema Interno de Controle de Estoque</p>
+        </div>
+        
+        <div style="padding: 2rem;">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                    <div style="padding: 0.75rem 1rem; border-radius: 0.5rem; margin-bottom: 1.5rem; font-size: 0.875rem; font-weight: 600; background: {% if category == 'success' %}#dcfce7; color: #166534;{% else %}#fee2e2; color: #991b1b;{% endif %}; display: flex; align-items: center; gap: 0.75rem;">
+                        <i class="fa-solid {% if category == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %}"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endwith %}
 
-<div class="login-card">
+            <form method="POST">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                
+                <div style="margin-bottom: 1.25rem;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.025em;">Usuário</label>
+                    <div style="position: relative;">
+                        <i class="fa-solid fa-user" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="text" name="usuario" class="form-control" style="padding-left: 2.75rem;" placeholder="Digite seu usuário" required autofocus>
+                    </div>
+                </div>
 
-    <img src="{{ url_for('static', filename='logo.png') }}" class="login-logo" alt="Santa Marta">
+                <div style="margin-bottom: 2rem;">
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.025em;">Senha</label>
+                    <div style="position: relative;">
+                        <i class="fa-solid fa-lock" style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                        <input type="password" name="senha" class="form-control" style="padding-left: 2.75rem;" placeholder="••••••••" required>
+                    </div>
+                </div>
 
-    <div class="login-title">
-        <span class="main">Gestão de Estoque</span>
-        <span class="sub">Painel central de controle e movimentações</span>
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.875rem; font-size: 1rem;">
+                    Entrar no Sistema <i class="fa-solid fa-arrow-right" style="margin-left: 0.5rem;"></i>
+                </button>
+            </form>
+        </div>
+        
+        <div style="padding: 1.5rem; text-align: center; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+            <p style="font-size: 0.75rem; color: #94a3b8;">&copy; 2026 Santa Marta Telhas & Acabamentos<br>Todos os direitos reservados.</p>
+        </div>
     </div>
-
-    <div id="loginDate">Carregando cronômetro...</div>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for cat, msg in messages %}
-            <div class="flash {{ cat }}">
-                <i class="fa-solid {% if cat == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %}"></i>
-                <span>{{ msg }}</span>
-            </div>
-        {% endfor %}
-    {% endif %}
-    {% endwith %}
-
-    <form method="POST" action="{{ url_for('login') }}">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-
-        <div class="input-container">
-            <input
-                type="text"
-                name="usuario"
-                placeholder="Usuário"
-                autocomplete="username"
-                required
-            >
-            <i class="fa-solid fa-user"></i>
-        </div>
-
-        <div class="input-container">
-            <input
-                type="password"
-                name="senha"
-                placeholder="Senha"
-                autocomplete="current-password"
-                required
-            >
-            <i class="fa-solid fa-lock"></i>
-        </div>
-
-        <button type="submit" class="btn-primary">
-            Entrar no Sistema
-        </button>
-    </form>
-
-    <p class="footer">
-        &copy; {{ year or 2026 }} — Desenvolvido por <strong>Luan David v.4.11</strong><br>
-        Todos os direitos reservados
-    </p>
-
-</div>
-
-<script>
-/* ---------------------------------------------------------
-   CRONÔMETRO — Atualização em tempo real (Formatação DM Mono)
-   --------------------------------------------------------- */
-function updateDateTime() {
-    const now = new Date();
-    const options = {
-        weekday: "long",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit"
-    };
-    document.getElementById("loginDate").innerText = now.toLocaleDateString("pt-BR", options);
-}
-
-updateDateTime();
-setInterval(updateDateTime, 1000);
-
-/* ---------------------------------------------------------
-   NORMALIZAÇÃO — Tratamento preventivo de entrada do usuário
-   --------------------------------------------------------- */
-document.querySelector("form").addEventListener("submit", function() {
-    const usuarioInput = document.querySelector('input[name="usuario"]');
-    if (usuarioInput) {
-        usuarioInput.value = usuarioInput.value.toLowerCase().trim();
-    }
-});
-</script>
-
 </body>
 </html>

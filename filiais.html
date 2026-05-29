@@ -1,196 +1,27 @@
+<style>html,body,input,button,select,textarea{font-family:"DM Sans",system-ui,sans-serif !important;}</style>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-<style>
-  /* Escopo de estilos para evitar quebras no layout global */
-  body, input, button, select, textarea {
-    font-family: "DM Sans", system-ui, -apple-system, sans-serif;
-  }
-
-  /* Cabeçalho da Página */
-  .page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #e5e7eb;
-  }
-
-  .page-header h3 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #111827;
-    margin: 0;
-  }
-
-  /* Botões */
-  .btn-primary {
-    background-color: #2563eb;
-    color: #ffffff;
-    padding: 10px 18px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    border-radius: 6px;
-    text-decoration: none;
-    transition: background-color 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .btn-primary:hover {
-    background-color: #1d4ed8;
-  }
-
-  .btn-action {
-    background: none;
-    border: none;
-    padding: 6px 12px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    border-radius: 6px;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
-    transition: all 0.2s;
-  }
-
-  .btn-edit {
-    color: #2563eb;
-    background-color: #eff6ff;
-  }
-
-  .btn-edit:hover {
-    background-color: #dbeafe;
-  }
-
-  .btn-delete {
-    color: #dc2626;
-    background-color: #fef2f2;
-  }
-
-  .btn-delete:hover {
-    background-color: #fee2e2;
-  }
-
-  /* Tabela Moderna */
-  .table-container {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-  }
-
-  .custom-table {
-    width: 100%;
-    border-collapse: collapse;
-    text-align: left;
-  }
-
-  .custom-table th {
-    background-color: #f9fafb;
-    padding: 14px 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #6b7280;
-    border-bottom: 1px solid #e5e7eb;
-  }
-
-  .custom-table td {
-    padding: 16px 20px;
-    font-size: 0.9rem;
-    color: #374151;
-    border-bottom: 1px solid #f3f4f6;
-    vertical-align: middle;
-  }
-
-  .custom-table tr:last-child td {
-    border-bottom: none;
-  }
-
-  .custom-table tr:hover td {
-    background-color: #f9fafb;
-  }
-
-  .branch-name {
-    font-weight: 600;
-    color: #111827;
-  }
-
-  .branch-city {
-    color: #6b7280;
-  }
-
-  .actions-cell {
-    text-align: right;
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-  }
-
-  /* Estado Vazio (Card) */
-  .empty-state {
-    background: #ffffff;
-    border: 2px dashed #e5e7eb;
-    border-radius: 8px;
-    padding: 40px 20px;
-    text-align: center;
-    color: #6b7280;
-    font-size: 0.95rem;
-  }
-</style>
-
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 {% extends 'layout.html' %}
 {% block content %}
-
-<div class="page-header">
-  <h3>Gerenciar Filiais</h3>
-  <a class="btn-primary" href="{{ url_for('nova_filial') }}">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-    Nova Filial
-  </a>
-</div>
-
+<div class="head"><h3>Gerenciar Filiais</h3><a class="btn" href="{{ url_for('nova_filial') }}">+ Nova Filial</a></div>
 {% if filiais %}
-<div class="table-container">
-  <table class="custom-table">
-    <thead>
-      <tr>
-        <th>Nome da Filial</th>
-        <th>Cidade</th>
-        <th style="text-align: right;">Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for f in filiais %}
-      <tr>
-        <td>
-          <span class="branch-name">{{ f.nome }}</span>
-        </td>
-        <td>
-          <span class="branch-city">{{ f.cidade if f.cidade else 'Não informada' }}</span>
-        </td>
-        <td class="actions-cell">
-          <a href="{{ url_for('editar_filial', id=f.id) }}" class="btn-action btn-edit">Editar</a>
-          
-          <form method="POST" action="{{ url_for('excluir_filial', id=f.id) }}" style="display:inline" onsubmit="return confirm('Confirma exclusão desta filial?');">
-            <button type="submit" class="btn-action btn-delete">Excluir</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<ul class="list">
+  {% for f in filiais %}
+  <li style="padding:10px;background:#fff;border-radius:8px;margin-bottom:8px">
+    <strong>{{ f.nome }}</strong> — {{ f.cidade or '' }} 
+    <span style="float:right">
+      <a href="{{ url_for('editar_filial', id=f.id) }}" class="btn-sm">Editar</a>
+      <form method="POST" action="{{ url_for('excluir_filial', id=f.id) }}" style="display:inline" onsubmit="return confirm('Confirma exclusão desta filial?');">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+        <button class="btn-sm" style="background:#c62828">Excluir</button>
+      </form>
+    </span>
+  </li>
+  {% endfor %}
+</ul>
 {% else %}
-<div class="empty-state">
-  <p>Nenhuma filial cadastrada até o momento.</p>
-</div>
+<div class="card">Nenhuma filial cadastrada.</div>
 {% endif %}
-
 {% endblock %}

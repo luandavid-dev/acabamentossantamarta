@@ -86,6 +86,7 @@
         <form
             method="POST"
             action="{{ url_for('abrir_chamado') }}"
+            enctype="multipart/form-data"
             class="form-grid"
             id="formRequerimento"
         >
@@ -229,6 +230,33 @@
                     required
                     placeholder="Descreva detalhadamente o defeito identificado..."
                 ></textarea>
+
+            </div>
+
+            <div class="form-group full">
+
+                <label>
+                    Anexo (opcional)
+                </label>
+
+                <div class="anexo-wrapper" id="anexoWrapper">
+
+                    <input
+                        type="file"
+                        name="anexo"
+                        id="anexo"
+                        accept=".pdf,.xls,.xlsx,.doc,.docx,.jpg,.jpeg"
+                    >
+
+                    <div class="anexo-info">
+                        <i class="fa-solid fa-paperclip"></i>
+                        <div>
+                            <strong id="anexoNome">Clique para anexar arquivo</strong>
+                            <span id="anexoHint">PDF, Excel, Word ou JPG/JPEG</span>
+                        </div>
+                    </div>
+
+                </div>
 
             </div>
 
@@ -600,6 +628,77 @@ body{
     line-height:1.35;
 }
 
+/* ANEXO ESTILIZADO */
+.anexo-wrapper{
+    position:relative;
+    border:1px dashed var(--border);
+    border-radius:14px;
+    background:var(--surface-soft);
+    padding:18px;
+    transition:.2s;
+    cursor:pointer;
+}
+
+.anexo-wrapper:hover{
+    border-color:var(--accent);
+    background:#fff;
+}
+
+.anexo-wrapper input[type="file"]{
+    position:absolute;
+    inset:0;
+    opacity:0;
+    cursor:pointer;
+    width:100%;
+    height:100%;
+    border:none;
+    background:transparent;
+}
+
+.anexo-info{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    pointer-events:none;
+}
+
+.anexo-info i{
+    width:46px;
+    height:46px;
+    border-radius:12px;
+    background:linear-gradient(135deg,var(--primary),var(--primary-2));
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+    flex-shrink:0;
+}
+
+.anexo-info strong{
+    display:block;
+    font-size:14px;
+    font-weight:900;
+    color:var(--text);
+    margin-bottom:2px;
+}
+
+.anexo-info span{
+    display:block;
+    font-size:12px;
+    color:var(--muted);
+}
+
+.anexo-wrapper.has-file{
+    border-style:solid;
+    border-color:var(--success);
+    background:var(--success-bg);
+}
+
+.anexo-wrapper.has-file .anexo-info i{
+    background:linear-gradient(135deg,var(--success),#15803d);
+}
+
 .form-actions{
     grid-column:1/-1;
     display:flex;
@@ -751,6 +850,10 @@ const tituloHidden     = document.getElementById("tituloHidden");
 const quantidadeInput  = document.getElementById("quantidade");
 const unidadeSelect    = document.getElementById("unidade");
 const prioridadeSelect = document.getElementById("prioridade");
+const anexoInput       = document.getElementById("anexo");
+const anexoWrapper     = document.getElementById("anexoWrapper");
+const anexoNome        = document.getElementById("anexoNome");
+const anexoHint        = document.getElementById("anexoHint");
 
 const dataResumo          = document.getElementById("dataResumo");
 const codigoResumo        = document.getElementById("codigoResumo");
@@ -927,6 +1030,28 @@ prioridadeSelect.addEventListener("change", () => {
 });
 
 /* ===================================================== */
+/* ANEXO - UI                                             */
+/* ===================================================== */
+
+anexoInput.addEventListener("change", () => {
+    if (anexoInput.files.length > 0) {
+        const f = anexoInput.files[0];
+        const sizeKB = f.size / 1024;
+        const sizeStr = sizeKB > 1024
+            ? (sizeKB / 1024).toFixed(2) + " MB"
+            : sizeKB.toFixed(1) + " KB";
+
+        anexoNome.textContent = f.name;
+        anexoHint.textContent = sizeStr + " · Pronto para envio";
+        anexoWrapper.classList.add("has-file");
+    } else {
+        anexoNome.textContent = "Clique para anexar arquivo";
+        anexoHint.textContent = "PDF, Excel, Word ou JPG/JPEG";
+        anexoWrapper.classList.remove("has-file");
+    }
+});
+
+/* ===================================================== */
 /* SUBMIT - BLOQUEIA PRODUTO FORA DA LISTA                */
 /* ===================================================== */
 
@@ -944,6 +1069,24 @@ formRequerimento.addEventListener("submit", function(event){
     }
 
     tituloHidden.value = `${cod} - ${prod} - ${qtde} ${un}`;
+
+    /* VALIDAÇÃO DE ANEXO */
+    if (anexoInput.files.length > 0) {
+        const arquivo = anexoInput.files[0];
+        const permitidos = [
+            'application/pdf',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'image/jpeg'
+        ];
+
+        if (!permitidos.includes(arquivo.type)) {
+            alert("Tipo de arquivo inválido! Apenas PDF, Excel, Word ou JPG/JPEG são permitidos.");
+            event.preventDefault();
+        }
+    }
 });
 
 /* ===================================================== */
