@@ -3690,29 +3690,27 @@ init_conferencias()
 # CONEXÃO ERP
 # =========================================================
 
-import os
-import pymssql  # Certifique-se de que este import está no topo do arquivo
-
 def get_erp_connection():
-    # Coleta as variáveis do ambiente (.env local ou do painel do Render)
+    if pyodbc is None:
+        raise RuntimeError("Dependência pyodbc não instalada. Instale as dependências de produção e o driver ODBC.")
+
+    # Dados fixos do ambiente conforme solicitado (Hardcoded para funcionamento imediato)
+    # Recomenda-se o uso de variáveis de ambiente para maior segurança em produção.
+    driver = os.environ.get("ERP_ODBC_DRIVER", "ODBC Driver 17 for SQL Server")
     server = os.environ.get("ERP_DB_SERVER", "192.168.3.32")
     database = os.environ.get("ERP_DB_NAME", "BDENTER")
     user = os.environ.get("ERP_DB_USER", "microuni")
     password = os.environ.get("ERP_DB_PASSWORD", "microuni")
 
-    # Conecta usando o pymssql (sem precisar de drivers do Linux)
-    conn = pymssql.connect(
-        server=server,
-        user=user,
-        password=password,
-        database=database,
-        port=1433,
-        autocommit=True
+    conn_str = (
+        f"DRIVER={{{driver}}};"
+        f"SERVER={server};"
+        f"DATABASE={database};"
+        f"UID={user};"
+        f"PWD={password};"
+        "TrustServerCertificate=yes;"
     )
-    
-    # Esta linha garante que o menu e as outras rotas consigam ler os dados por nome da coluna!
-    conn.cursor = lambda: conn.cursor(as_dict=True)
-    return conn
+    return pyodbc.connect(conn_str)
 
 # =========================================================
 # ROTA LISTAGEM DE PEDIDOS
@@ -3721,6 +3719,7 @@ def get_erp_connection():
 @app.route("/conferencia")
 @login_required
 def conferencia():
+
     from datetime import datetime, timedelta
 
     user_tipo = session.get("tipo")
@@ -3738,7 +3737,7 @@ def conferencia():
     previsao_inicio = request.args.get("previsao_inicio")
     previsao_fim = request.args.get("previsao_fim")
 
-    # filtro rápido
+    # 🔥 NOVO: filtro rápido
     filtro_rapido = request.args.get("previsao_rapida")
 
     hoje = datetime.today().date()
@@ -3747,12 +3746,14 @@ def conferencia():
         data_fim = hoje.strftime('%Y-%m-%d')
         data_inicio = (hoje - timedelta(days=30)).strftime('%Y-%m-%d')
 
-    # aplica filtros rápidos
+    # 🔥 aplica filtros rápidos
     if filtro_rapido == "hoje":
         previsao_inicio = previsao_fim = hoje.strftime('%Y-%m-%d')
+
     elif filtro_rapido == "amanha":
         amanha = hoje + timedelta(days=1)
         previsao_inicio = previsao_fim = amanha.strftime('%Y-%m-%d')
+
     elif filtro_rapido == "semana":
         inicio_semana = hoje
         fim_semana = hoje + timedelta(days=7)
@@ -3791,31 +3792,32 @@ def conferencia():
 
             params = []
 
-            # Mudado de ? para %s devido ao pymssql
-            query += " AND CAST(V.DATA_PEDIDO AS DATE) BETWEEN %s AND %s"
+            query += " AND CAST(V.DATA_PEDIDO AS DATE) BETWEEN ? AND ?"
             params.extend([data_inicio, data_fim])
 
+            # 🔥 PREVISÃO ENTREGA
             if previsao_inicio and previsao_fim:
-                query += " AND CAST(P.DTPREVREC AS DATE) BETWEEN %s AND %s"
+                query += " AND CAST(P.DTPREVREC AS DATE) BETWEEN ? AND ?"
                 params.extend([previsao_inicio, previsao_fim])
 
+            # 🔥 atrasados
             if filtro_rapido == "atrasados":
-                query += " AND CAST(P.DTPREVREC AS DATE) < %s"
+                query += " AND CAST(P.DTPREVREC AS DATE) < ?"
                 params.append(hoje.strftime('%Y-%m-%d'))
 
             if pedido:
-                query += " AND V.NUMPED = %s"
+                query += " AND V.NUMPED = ?"
                 params.append(pedido)
 
             if fornecedor:
-                query += " AND LOWER(V.FORNECEDOR) LIKE %s"
+                query += " AND LOWER(V.FORNECEDOR) LIKE ?"
                 params.append(f"%{fornecedor}%")
 
             if produto:
                 query += """
                     AND (
-                        CAST(V.CODPRO AS VARCHAR) LIKE %s
-                        OR UPPER(V.PRODUTO) LIKE UPPER(%s)
+                        CAST(V.CODPRO AS VARCHAR) LIKE ?
+                        OR UPPER(V.PRODUTO) LIKE UPPER(?)
                     )
                 """
                 like = f"%{produto}%"
@@ -3827,6 +3829,7 @@ def conferencia():
             pedidos = cursor.fetchall()
 
         with get_db_connection() as conn:
+
             status_map = {
                 r["numped"]: r["status"]
                 for r in conn.execute("SELECT numped, status FROM status_conferencia")
@@ -3850,17 +3853,16 @@ def conferencia():
                 """)
             }
 
-        # Corrigido acessos p.NUMPED para p["NUMPED"] (pelo formato de dicionário)
         for p in pedidos:
-            numped_atual = p["NUMPED"]
-            status_atual = status_map.get(numped_atual, STATUS_PENDENTE)
-            data_chegada = chegada_map.get(numped_atual)
-            usuario_conf = usuario_map.get(numped_atual)
+
+            status_atual = status_map.get(p.NUMPED, STATUS_PENDENTE)
+            data_chegada = chegada_map.get(p.NUMPED)
+            usuario_conf = usuario_map.get(p.NUMPED)
 
             if status_filtro and status_atual != status_filtro:
                 continue
 
-            previsao_data = p["DTPREVREC"]
+            previsao_data = p.DTPREVREC
 
             atrasado = False
             if previsao_data:
@@ -3870,9 +3872,9 @@ def conferencia():
                     pass
 
             pedidos_com_status.append({
-                "NUMPED": numped_atual,
-                "DATA_PEDIDO": p["DATA_PEDIDO"].strftime("%d/%m/%Y") if p["DATA_PEDIDO"] else "-",
-                "FORNECEDOR": p["FORNECEDOR"],
+                "NUMPED": p.NUMPED,
+                "DATA_PEDIDO": p.DATA_PEDIDO.strftime("%d/%m/%Y"),
+                "FORNECEDOR": p.FORNECEDOR,
                 "PREVISAO_ENTREGA": previsao_data.strftime("%d/%m/%Y") if previsao_data else None,
                 "ATRASADO": atrasado,
                 "STATUS": status_atual,
@@ -3956,7 +3958,6 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 @app.route("/conferencia/<int:num_pedido>", methods=["GET", "POST"])
 @login_required
 def conferencia_itens(num_pedido):
-    from decimal import Decimal  # Import adicionado para corrigir erro de nome não definido
 
     user_tipo = session.get("tipo")
     usuario = session.get("nome", "desconhecido")
@@ -3968,10 +3969,11 @@ def conferencia_itens(num_pedido):
 
     # ================= ERP =================
     try:
+
         with get_erp_connection() as erp_conn:
+
             cursor = erp_conn.cursor()
 
-            # Trocado marcador ? para %s devido ao pymssql
             cursor.execute("""
                 SELECT 
                     CODPRO,
@@ -3979,22 +3981,33 @@ def conferencia_itens(num_pedido):
                     QTDE,
                     TOTAL_PRECO_FINAL
                 FROM _VISAO_CARGA_PEDIDO_COMPRA
-                WHERE NUMPED = %s
+                WHERE NUMPED = ?
                 ORDER BY CODPRO
             """, (num_pedido,))
 
-            # Como o cursor já retorna dicionário no nosso get_erp_connection, simplificamos o fetch
-            itens = cursor.fetchall()
+            itens = [
+                dict(zip([c[0] for c in cursor.description], r))
+                for r in cursor.fetchall()
+            ]
 
     except Exception as e:
+
         flash(f"Erro ERP: {e}", "danger")
         itens = []
 
     # ================= POST =================
     if request.method == "POST":
+
         try:
+
             with get_db_connection() as conn:
+
+                # =====================================================
+                # SALVAR ITENS
+                # =====================================================
+
                 for item in itens:
+
                     codpro = item["CODPRO"]
 
                     qtd = request.form.get(f"qtd_{codpro}")
@@ -4027,7 +4040,10 @@ def conferencia_itens(num_pedido):
                             DELETE FROM conferencias
                             WHERE numped = ?
                             AND codpro = ?
-                        """, (num_pedido, codpro)) # Banco local SQLite continua com "?"
+                        """, (
+                            num_pedido,
+                            codpro
+                        ))
 
                         conn.execute("""
                             INSERT INTO conferencias (
@@ -4060,15 +4076,28 @@ def conferencia_itens(num_pedido):
                             area_m2
                         ))
 
-                # ================= MENSAGEM / ANEXOS =================
-                comentario = request.form.get("comentario_pedido", "").strip()
+                # =====================================================
+                # MENSAGEM / ANEXOS
+                # =====================================================
+
+                comentario = request.form.get(
+                    "comentario_pedido",
+                    ""
+                ).strip()
+
                 arquivos = request.files.getlist("anexos")
-                tem_anexo = any(f and f.filename for f in arquivos)
+
+                tem_anexo = any(
+                    f and f.filename
+                    for f in arquivos
+                )
 
                 mensagem_id = None
 
+                # cria mensagem mesmo sem comentário
                 if comentario or tem_anexo:
-                    cursor_db = conn.execute("""
+
+                    cursor = conn.execute("""
                         INSERT INTO mensagens (
                             chamado_id,
                             texto,
@@ -4084,20 +4113,38 @@ def conferencia_itens(num_pedido):
                         autor_id,
                         user_tipo
                     ))
-                    mensagem_id = cursor_db.lastrowid
 
-                # ================= SALVAR ANEXOS =================
+                    mensagem_id = cursor.lastrowid
+
+                # =====================================================
+                # SALVAR ANEXOS
+                # =====================================================
+
                 if tem_anexo:
-                    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+                    os.makedirs(
+                        UPLOAD_FOLDER,
+                        exist_ok=True
+                    )
+
                     for f in arquivos:
+
                         if f and f.filename:
+
                             if not allowed_file(f.filename):
                                 flash("Anexo ignorado por extensão não permitida.", "warning")
                                 continue
 
-                            nome_original = secure_filename(f.filename)
+                            nome_original = secure_filename(
+                                f.filename
+                            )
                             nome_seguro = safe_unique_filename(nome_original, "conf")
-                            caminho = os.path.join(UPLOAD_FOLDER, nome_seguro)
+
+                            caminho = os.path.join(
+                                UPLOAD_FOLDER,
+                                nome_seguro
+                            )
+
                             f.save(caminho)
 
                             conn.execute("""
@@ -4116,48 +4163,103 @@ def conferencia_itens(num_pedido):
                             ))
 
                 conn.commit()
-            flash("Pedido updated com sucesso!", "success")
+
+            flash(
+                "Pedido atualizado com sucesso!",
+                "success"
+            )
 
         except Exception as e:
-            flash(f"Erro ao salvar: {e}", "danger")
 
-        return redirect(url_for("conferencia_itens", num_pedido=num_pedido))
+            flash(
+                f"Erro ao salvar: {e}",
+                "danger"
+            )
+
+        return redirect(
+            url_for(
+                "conferencia_itens",
+                num_pedido=num_pedido
+            )
+        )
 
     # ================= BANCO LOCAL =================
+
     with get_db_connection() as conn:
+
         qtd_dict = {
+
             r["codpro"]: dict(r)
+
             for r in conn.execute("""
+
                 SELECT
-                    codpro, qtd_contada, tonalidade_bitola, enderecamento,
-                    data_chegada, lote, peso, pei, area_m2
+                    codpro,
+                    qtd_contada,
+                    tonalidade_bitola,
+                    enderecamento,
+                    data_chegada,
+                    lote,
+                    peso,
+                    pei,
+                    area_m2
+
                 FROM conferencias
+
                 WHERE numped = ?
+
             """, (num_pedido,))
         }
 
         mensagens_raw = conn.execute("""
+
             SELECT
-                m.id, m.texto, m.autor_nome, m.autor_tipo, m.data,
-                a.filename, a.filepath
+                m.id,
+                m.texto,
+                m.autor_nome,
+                m.autor_tipo,
+                m.data,
+                a.filename,
+                a.filepath
+
             FROM mensagens m
-            LEFT JOIN anexos a ON a.mensagem_id = m.id
+
+            LEFT JOIN anexos a
+                ON a.mensagem_id = m.id
+
             WHERE m.chamado_id = ?
+
             ORDER BY m.data ASC
+
         """, (num_pedido,)).fetchall()
 
     # ================= AGRUPAR MENSAGENS =================
+
     tz_brasilia = pytz.timezone("America/Sao_Paulo")
+
     mensagens_dict = {}
 
     for m in mensagens_raw:
+
         msg_id = m["id"]
+
         if msg_id not in mensagens_dict:
+
             data_fmt = m["data"]
+
             try:
-                dt = datetime.strptime(m["data"], "%Y-%m-%d %H:%M:%S")
+
+                dt = datetime.strptime(
+                    m["data"],
+                    "%Y-%m-%d %H:%M:%S"
+                )
+
                 dt = dt.replace(tzinfo=pytz.UTC)
-                data_fmt = dt.astimezone(tz_brasilia).strftime("%d/%m/%Y %H:%M")
+
+                data_fmt = dt.astimezone(
+                    tz_brasilia
+                ).strftime("%d/%m/%Y %H:%M")
+
             except:
                 pass
 
@@ -4170,6 +4272,7 @@ def conferencia_itens(num_pedido):
             }
 
         if m["filename"]:
+
             mensagens_dict[msg_id]["anexos"].append({
                 "filename": m["filename"],
                 "filepath": m["filepath"]
@@ -4178,10 +4281,11 @@ def conferencia_itens(num_pedido):
     mensagens = list(mensagens_dict.values())
 
     # ================= TOTAL PEDIDO =================
+
     total_pedido = sum(
         Decimal(str(i["TOTAL_PRECO_FINAL"]))
         for i in itens
-        if i.get("TOTAL_PRECO_FINAL")
+        if i["TOTAL_PRECO_FINAL"]
     )
 
     return render_template(
@@ -4193,6 +4297,79 @@ def conferencia_itens(num_pedido):
         user_tipo=user_tipo,
         total_pedido=total_pedido
     )
+
+from flask import send_from_directory
+
+@app.route("/anexos/<path:filename>")
+@login_required
+def ver_anexo(filename):
+    if os.path.basename(filename) != filename or ".." in filename:
+        abort(400)
+    return send_from_directory(
+        UPLOAD_FOLDER,
+        filename,
+        as_attachment=False
+    )
+
+
+# =========================================================
+# HARDENING DE PRODUÇÃO: CSRF, CABEÇALHOS E ENDPOINTS AUXILIARES
+# =========================================================
+
+def csrf_token():
+    token = session.get("_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_csrf_token"] = token
+    return token
+
+@app.context_processor
+def inject_security_helpers():
+    return {"csrf_token": csrf_token, "static_version": "20260527-secure"}
+
+@app.before_request
+def enforce_csrf_protection():
+    if request.method in ("GET", "HEAD", "OPTIONS"):
+        return None
+    if request.endpoint == "static":
+        return None
+
+    expected = session.get("_csrf_token")
+    supplied = (
+        request.form.get("_csrf_token")
+        or request.headers.get("X-CSRFToken")
+        or request.headers.get("X-CSRF-Token")
+    )
+    if not expected or not supplied or not hmac.compare_digest(str(expected), str(supplied)):
+        if request.accept_mimetypes.accept_json or request.is_json:
+            return jsonify({"erro": "Token CSRF inválido ou ausente."}), 400
+        flash("Sessão expirada ou requisição inválida. Tente novamente.", "danger")
+        return redirect(url_for("login"))
+    return None
+
+@app.after_request
+def add_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    response.headers.setdefault("Cache-Control", "no-store" if session.get("user_id") else "no-cache")
+    return response
+
+@app.route("/api/conferencia/pendentes")
+@login_required
+def api_conferencia_pendentes():
+    try:
+        with get_db_connection() as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) AS total FROM status_conferencia WHERE COALESCE(status, ?) = ?",
+                (STATUS_PENDENTE, STATUS_PENDENTE),
+            ).fetchone()
+            total = int(row["total"] if row else 0)
+        return jsonify({"total": total})
+    except Exception:
+        return jsonify({"total": 0})
+
 
 if __name__ == "__main__":
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)

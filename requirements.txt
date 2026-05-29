@@ -6,4 +6,3 @@ pytz>=2024.1
 pyodbc>=5.1
 gunicorn>=22.0
 python-dotenv
-pymssql
