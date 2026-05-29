@@ -3691,7 +3691,7 @@ init_conferencias()
 # =========================================================
 
 import os
-import pymssql  # <-- Adicione este import no topo do arquivo
+import pymssql  # <-- Adicione este import no topo do arquivo junto com os outros
 
 def get_erp_connection():
     # Coleta as variáveis do ambiente (.env local ou do painel do Render)
@@ -3700,14 +3700,15 @@ def get_erp_connection():
     user = os.environ.get("ERP_DB_USER", "microuni")
     password = os.environ.get("ERP_DB_PASSWORD", "microuni")
 
-    # O pymssql conecta passando os parâmetros direto, sem precisar de nome de Driver!
+    # O pymssql não necessita de string de conexão confusa ou nome de DRIVER!
     return pymssql.connect(
         server=server,
         user=user,
         password=password,
         database=database,
         port=1433,
-        autocommit=True # Mantém o mesmo comportamento padrão do pyodbc
+        as_dict=True,      # Crucial: mantém compatibilidade com os dicionários do app.py
+        autocommit=True
     )
 
 
