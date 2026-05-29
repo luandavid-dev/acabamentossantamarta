@@ -1,18 +1,4 @@
-FROM python:3.11-slim
-
-# Instalar dependências do sistema e drivers ODBC da Microsoft
-RUN apt-get update && apt-get install -y \
-    curl \
-    gnupg2 \
-    unixodbc \
-    unixodbc-dev \
-    && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
-    && curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list \
-    && apt-get update \
-    && ACCEPT_EULA=Y apt-get install -y msodbcsql17 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
+```dockerfile
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -27,25 +13,32 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Adicionar chave Microsoft (novo método)
+# Adicionar chave Microsoft
 RUN mkdir -p /etc/apt/keyrings \
     && curl -sSL https://packages.microsoft.com/keys/microsoft.asc \
     | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg
 
-# Adicionar repositório Microsoft
+# Repositório Microsoft
 RUN echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" \
     > /etc/apt/sources.list.d/mssql-release.list
 
-# Instalar ODBC Driver SQL Server
+# Instalar ODBC SQL Server
 RUN apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Python
+# Dependências Python
 COPY requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copiar projeto
 COPY . .
 
-CMD ["python", "app.py"]
+# Porta Render
+ENV PORT=10000
+
+# Inicialização
+CMD ["gunicorn", "--bind", "0.0.0.0:10000", "app:app"]
+```
