@@ -3691,7 +3691,7 @@ init_conferencias()
 # =========================================================
 
 import os
-import pymssql  # <-- Adicione este import no topo do arquivo junto com os outros
+import pymssql  # Certifique-se de que este import está no topo do arquivo
 
 def get_erp_connection():
     # Coleta as variáveis do ambiente (.env local ou do painel do Render)
@@ -3700,17 +3700,19 @@ def get_erp_connection():
     user = os.environ.get("ERP_DB_USER", "microuni")
     password = os.environ.get("ERP_DB_PASSWORD", "microuni")
 
-    # O pymssql não necessita de string de conexão confusa ou nome de DRIVER!
-    return pymssql.connect(
+    # Conecta usando o pymssql (sem precisar de drivers do Linux)
+    conn = pymssql.connect(
         server=server,
         user=user,
         password=password,
         database=database,
         port=1433,
-        as_dict=True,      # Crucial: mantém compatibilidade com os dicionários do app.py
         autocommit=True
     )
-
+    
+    # Esta linha garante que o menu e as outras rotas consigam ler os dados por nome da coluna!
+    conn.cursor = lambda: conn.cursor(as_dict=True)
+    return conn
 
 # =========================================================
 # ROTA LISTAGEM DE PEDIDOS
