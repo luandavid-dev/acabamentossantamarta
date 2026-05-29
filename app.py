@@ -4367,7 +4367,7 @@ def api_conferencia_pendentes():
 # --- ADICIONE ESTE BLOCO NO FINAL DO SEU APP.PY ---
 
 # Token de segurança (Adicione também nas variáveis de ambiente do Render para maior segurança)
-API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "ChaveSuperSecretaDoIntegrador123!")
+API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "8f3b29c1e4d5f6a7b8c9d0e1f2a3b4c5d6e7f8a")
 
 # Certifique-se de ter importado o "os" no topo do app.py caso ainda não tenha:
 # import os
@@ -4375,12 +4375,12 @@ API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "ChaveSuperSecretaDoIntegrador
 # Chave secreta de comunicação (Garanta que a mesma palavra esteja no integrador.py da empresa)
 API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "8f3b29c1e4d5f6a7b8c9d0e1f2a3b4c5d6e7f8a")
 
+# --- SUBSTITUA A SUA ROTA POR ESTA VERSÃO COMPLETA ---
+
+API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "ChaveSuperSecretaDoIntegrador123!")
+
 @app.route("/api/pedidos/sincronizar", methods=["POST"])
 def api_sincronizar_pedidos():
-    # BYPASS DO CSRF MANUAL: Força o Flask a aceitar a rota ignorando validações globais baseadas em cookies
-    if request.path == "/api/pedidos/sincronizar" and request.method == "POST":
-        pass  # Libera a entrada para validação exclusiva via Token no cabeçalho abaixo
-
     # 1. Validação de segurança robusta por token de cabeçalho (Header)
     token_recebido = request.headers.get("X-Sync-Token")
     if not token_recebido or token_recebido != API_SYNC_TOKEN:
@@ -4404,7 +4404,7 @@ def api_sincronizar_pedidos():
                 )
             """)
             
-            # 3. Insere ou atualiza os pedidos em massa (Usa transação eficiente)
+            # 3. Insere ou atualiza os pedidos em massa
             for p in pedidos_recebidos:
                 conn.execute("""
                     INSERT INTO pedidos_erp (NUMPED, DATA_PEDIDO, FORNECEDOR, DTPREVREC)
@@ -4423,4 +4423,10 @@ def api_sincronizar_pedidos():
         return jsonify({"erro": f"Erro interno ao gravar dados no SQLite do Render: {str(e)}"}), 500
 
 
-
+# --- ADICIONE ESTA LINHA LOGO ABAIXO DA ROTA ACIMA ---
+# Isso força a extensão CSRFProtect do Flask a ignorar esta rota globalmente.
+try:
+    csrf.exempt(api_sincronizar_pedidos)
+except NameError:
+    # Se o seu objeto CSRF não se chamar 'csrf', mude o nome acima para o nome dele
+    pass
