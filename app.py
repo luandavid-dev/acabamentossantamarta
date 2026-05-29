@@ -3690,41 +3690,25 @@ init_conferencias()
 # CONEXÃO ERP
 # =========================================================
 
-def get_erp_connection():
-    if pyodbc is None:
-        raise RuntimeError("Dependência pyodbc não instalada. Instale as dependências de produção e o driver ODBC.")
+import os
+import pymssql  # <-- Adicione este import no topo do arquivo
 
-    # Dados do ambiente (buscando do .env ou do Render com os padrões definidos)
-    driver = os.environ.get("ERP_ODBC_DRIVER", "ODBC Driver 17 for SQL Server")
+def get_erp_connection():
+    # Coleta as variáveis do ambiente (.env local ou do painel do Render)
     server = os.environ.get("ERP_DB_SERVER", "192.168.3.32")
     database = os.environ.get("ERP_DB_NAME", "BDENTER")
     user = os.environ.get("ERP_DB_USER", "microuni")
     password = os.environ.get("ERP_DB_PASSWORD", "microuni")
 
-    # SE ESTIVER RODANDO NO RENDER (LINUX)
-    if os.environ.get("RENDER"):
-        driver = "FreeTDS"
-        string_conexao = (
-            f"DRIVER={{{driver}}};"
-            f"SERVER={server};"
-            f"PORT=1433;"
-            f"DATABASE={database};"
-            f"UID={user};"
-            f"PWD={password};"
-            f"TDS_Version=7.4;"
-        )
-    # SE ESTIVER LOCAL (WINDOWS)
-    else:
-        string_conexao = (
-            f"DRIVER={{{driver}}};"
-            f"SERVER={server};"
-            f"DATABASE={database};"
-            f"UID={user};"
-            f"PWD={password};"
-            f"TrustServerCertificate=yes;"
-        )
-
-    return pyodbc.connect(string_conexao)
+    # O pymssql conecta passando os parâmetros direto, sem precisar de nome de Driver!
+    return pymssql.connect(
+        server=server,
+        user=user,
+        password=password,
+        database=database,
+        port=1433,
+        autocommit=True # Mantém o mesmo comportamento padrão do pyodbc
+    )
 
 
 # =========================================================
