@@ -89,14 +89,14 @@ def _client_ip():
 
 def _is_login_blocked(usuario):
     key = (_client_ip(), (usuario or "").lower())
-    now_ts = datetime.utcnow().timestamp()
+    now_ts = datetime.now(pytz.UTC).timestamp()
     attempts = [ts for ts in LOGIN_ATTEMPTS.get(key, []) if now_ts - ts < LOGIN_WINDOW_SECONDS]
     LOGIN_ATTEMPTS[key] = attempts
     return len(attempts) >= LOGIN_MAX_ATTEMPTS
 
 def _register_login_failure(usuario):
     key = (_client_ip(), (usuario or "").lower())
-    LOGIN_ATTEMPTS.setdefault(key, []).append(datetime.utcnow().timestamp())
+    LOGIN_ATTEMPTS.setdefault(key, []).append(datetime.now(pytz.UTC).timestamp())
 
 def _clear_login_failures(usuario):
     LOGIN_ATTEMPTS.pop((_client_ip(), (usuario or "").lower()), None)
@@ -112,7 +112,7 @@ def safe_unique_filename(filename, prefix=""):
     ext = safe.rsplit(".", 1)[1].lower()
     base = safe.rsplit(".", 1)[0][:80] or "arquivo"
     token = secrets.token_hex(8)
-    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    ts = datetime.now(pytz.UTC).strftime("%Y%m%d%H%M%S")
     prefix = f"{secure_filename(prefix)}_" if prefix else ""
     return f"{prefix}{ts}_{token}_{base}.{ext}"
 
@@ -252,7 +252,7 @@ def extrair_classificacao(titulo: str):
 # -------------------------------------------------------
 def criar_notificacao(chamado_id, texto, autor_id, autor_nome):
     conn = get_db_connection()
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(pytz.UTC).isoformat()
 
     conn.execute("""
         INSERT INTO notificacoes (chamado_id, texto, autor_id, autor_nome, lida, criado_em)
@@ -279,7 +279,7 @@ def login_required(f):
 
 @app.context_processor
 def inject_now():
-    return {"now": datetime.utcnow, "year": datetime.utcnow().year}
+    return {"now": lambda: datetime.now(pytz.UTC), "year": datetime.now(pytz.UTC).year}
 
 
 # --- ROUTES (login / uploads) ---
@@ -320,7 +320,7 @@ def login():
 
         return redirect(url_for("dashboard"))
 
-    return render_template("login.html", year=datetime.utcnow().year)
+    return render_template("login.html", year=datetime.now(pytz.UTC).year)
 
 
 @app.route("/logout")
@@ -1068,28 +1068,49 @@ def dashboard():
 
     conn.close()
 
+    # Obter contagem de filiais com tratamento de erro
+    try:
+        total_filiais = conn.execute("SELECT COUNT(*) FROM filiais").fetchone()[0]
+    except Exception:
+        total_filiais = 0
+
+    # Obter furos do mês atual com tratamento de erro
+    try:
+        hoje_now = datetime.now()
+        inicio_mes = hoje_now.replace(day=1).strftime("%Y-%m-%d")
+        # Tenta data_registro ou data_furo dependendo da versão do banco
+        try:
+            furos_mes = conn.execute("SELECT COUNT(*) FROM furo_estoque WHERE date(data_registro) >= date(?)", (inicio_mes,)).fetchone()[0]
+        except Exception:
+            furos_mes = conn.execute("SELECT COUNT(*) FROM furo_estoque WHERE date(data_furo) >= date(?)", (inicio_mes,)).fetchone()[0]
+    except Exception:
+        furos_mes = 0
+
+    # Preparar objeto stats para o template
+    stats = {
+        "chamados_abertos": status_counts.get("Aberto", 0),
+        "entregas_hoje": len(compras_stats),
+        "furos_mes": furos_mes,
+        "total_filiais": total_filiais
+    }
+
+    # Ajustar objeto charts para os nomes esperados no template
+    charts_template = {
+        "filiais_labels": [item["produto"] for item in chamados_produto_classificacao_list[:10]],
+        "filiais_values": [item["total"] for item in chamados_produto_classificacao_list[:10]],
+        "status_labels": list(status_counts.keys()),
+        "status_values": list(status_counts.values()),
+        "furos_labels": [item["produto"] for item in top_produtos_furos_list[:10]],
+        "furos_values": [item["total_qtde"] for item in top_produtos_furos_list[:10]],
+        "compras_labels": [item["status"] for item in compras_stats],
+        "compras_values": [item["quantidade"] for item in compras_stats]
+    }
+
     return render_template(
         "dashboard.html",
         filtros=filtros,
-        total_chamados=total_chamados,
-        status_counts=status_counts,
-        percentual_chamados_abertos=percentual_chamados_abertos,
-        chamados_produto_classificacao=chamados_produto_classificacao_list,
-        compras_stats=compras_stats,
-        compras_valor_total=compras_valor_total,
-        compras_valor_total_fmt=formatar_brl(compras_valor_total),
-        compras_quantidade_total=compras_quantidade_total,
-        total_ajustes=total_ajustes,
-        total_corretos=total_corretos,
-        total_divergentes=total_divergentes,
-        total_qtde_encontrada=round(total_qtde_encontrada, 2),
-        percentual_ajustes_divergentes=percentual_ajustes_divergentes,
-        ajuste_status_counts=ajuste_status_counts,
-        top_produtos_furos=top_produtos_furos_list,
-        ajustes_por_filial=ajustes_por_filial,
-        ajustes_por_patio=ajustes_por_patio,
-        ajustes_recentes=ajustes_recentes,
-        charts=charts,
+        stats=stats,
+        charts=charts_template,
         usuarios_dashboard=usuarios_dashboard
     )
 
@@ -1412,11 +1433,14 @@ def api_dashboard_stats():
 @app.route("/api/filiais")
 @login_required
 def api_filiais():
-    conn = get_db_connection()
-    rows = conn.execute("SELECT id, nome FROM filiais ORDER BY nome").fetchall()
-    conn.close()
-    items = [{"id": r["id"], "nome": r["nome"]} for r in rows]
-    return jsonify(items)
+    try:
+        conn = get_db_connection()
+        rows = conn.execute("SELECT id, nome FROM filiais ORDER BY nome").fetchall()
+        conn.close()
+        items = [{"id": r["id"], "nome": r["nome"]} for r in rows]
+        return jsonify(items)
+    except Exception:
+        return jsonify([])
 
 from datetime import datetime, timezone
 
@@ -1424,7 +1448,7 @@ def tempo_relativo(iso_time):
     if not iso_time:
         return ""
     dt = datetime.fromisoformat(iso_time).replace(tzinfo=timezone.utc)
-    agora = datetime.utcnow().replace(tzinfo=timezone.utc)
+    agora = datetime.now(pytz.UTC).replace(tzinfo=timezone.utc)
     diff = (agora - dt).total_seconds()
 
     if diff < 60:
@@ -1436,59 +1460,16 @@ def tempo_relativo(iso_time):
     else:
         return f"Há {int(diff/86400)} dias"
 
-# =========================================================================
-# AUTO-HEALING: ATUALIZADO PARA SUPORTAR NÍVEL DE SEVERIDADE
-# =========================================================================
-try:
-    with get_db_connection() as _conn:
-        # Garante a coluna url_destino para compatibilidade
-        try:
-            _conn.execute("ALTER TABLE notificacoes ADD COLUMN url_destino TEXT")
-        except sqlite3.OperationalError: pass
-        
-        # NOVA COLUNA: nível de urgência/gravidade da notificação
-        try:
-            _conn.execute("ALTER TABLE notificacoes ADD COLUMN nivel TEXT DEFAULT 'normal'")
-        except sqlite3.OperationalError: pass
-        
-        _conn.commit()
-except Exception as e:
-    print("Erro no auto-healing:", e)
-
-# -------------------------------------------------------------------------
-# SISTEMA INOVADOR DE NOTIFICAÇÃO DE ALTA GRAVIDADE (DIVERGÊNCIAS)
-# -------------------------------------------------------------------------
-def disparar_alerta_divergencia_grave(furo_id, produto_nome, codpro, dif_qtd, usuario_nome):
-    """Gera um alerta crítico no banco de dados para ser interceptado pelo Front-End."""
-    conn = get_db_connection()
-    now = datetime.utcnow().isoformat()
-    
-    # Texto formatado de forma alarmante
-    texto_alerta = (
-        f"🚨 INCONFORMIDADE CRÍTICA DETECTADA! O usuário {usuario_nome} identificou "
-        f"uma divergência de {dif_qtd:+.2f} UN no produto {codpro} - {produto_nome}."
-    )
-    
-    conn.execute("""
-        INSERT INTO notificacoes (texto, autor_nome, lida, criado_em, url_destino, nivel)
-        VALUES (?, ?, 0, ?, ?, 'grave')
-    """, (texto_alerta, "SISTEMA INTEGRADO", now, f"/dashboard?produto={codpro}", "grave"))
-    
-    conn.commit()
-    conn.close()
-
-# =========================================================================
-# ROTAS DE NOTIFICAÇÃO DA CENTRAL (SINO)
-# =========================================================================
-
 @app.route("/api/notificacoes")
-@login_required
 def api_notificacoes():
+    if 'user_id' not in session:
+        return jsonify([])
+
     conn = get_db_connection()
-    
-    # Selecionando também a nova coluna url_destino para compatibilidade com outros menus
+
+    # Agora TODOS veem TUDO
     sql = """
-        SELECT id, chamado_id, autor_nome, texto, lida, criado_em, url_destino
+        SELECT id, chamado_id, autor_nome, texto, lida, criado_em
         FROM notificacoes
         ORDER BY id DESC
         LIMIT 40
@@ -1498,27 +1479,18 @@ def api_notificacoes():
 
     lista = []
     for n in dados:
-        # Fallback inteligente: se não houver url_destino mas houver chamado_id, aponta para o chamado
-        url = n["url_destino"]
-        if not url and n["chamado_id"]:
-            url = f"/chamados/{n['chamado_id']}"
-            
         lista.append({
             "id": n["id"],
             "chamado_id": n["chamado_id"],
-            "autor_nome": n["autor_nome"] or "Sistema",
+            "autor_nome": n["autor_nome"],
             "texto": n["texto"],
             "lida": bool(n["lida"]),
-            # Garante que a data não quebre caso venha nula ou vazia
-            "criado_em_formatado": tempo_relativo(n["criado_em"]) if n["criado_em"] else "Agora mesmo",
-            "url_destino": url
+            "criado_em_formatado": tempo_relativo(n["criado_em"])
         })
 
     return jsonify(lista)
 
-
 @app.route("/api/notificacoes/marcar/<int:notif_id>")
-@login_required
 def api_notificacoes_marcar(notif_id):
     conn = get_db_connection()
     conn.execute("UPDATE notificacoes SET lida = 1 WHERE id = ?", (notif_id,))
@@ -1526,21 +1498,39 @@ def api_notificacoes_marcar(notif_id):
     conn.close()
     return jsonify({"status": "ok"})
 
-
 @app.route("/api/notificacoes/limpar", methods=["POST"])
-@login_required
 def api_notificacoes_limpar():
+    if 'user_id' not in session:
+        return jsonify({"erro": "não autorizado"}), 403
+
+    uid = session['user_id']
+    tipo = session.get("tipo")
+
     conn = get_db_connection()
+
+    # Usuário comum só limpa suas notificações
+    if tipo == "usuario":
+        sql = """
+            UPDATE notificacoes
+            SET lida = 1
+            WHERE id IN (
+                SELECT n.id
+                FROM notificacoes n
+                JOIN chamados c ON c.id = n.chamado_id
+                WHERE c.usuario_id = ?
+            )
+        """
+        conn.execute(sql, (uid,))
     
-    # CORREÇÃO CRÍTICA: Como TODOS veem TUDO (incluindo furos de estoque e compras), 
-    # se mantivéssemos o JOIN com chamados para o usuário comum, ele nunca conseguiria 
-    # limpar as notificações multimódulo da tela dele. 
-    # Para alinhar com a regra de "Visão Global", limpamos de forma unificada.
-    conn.execute("UPDATE notificacoes SET lida = 1")
+    # Admin / Técnico limpa tudo
+    else:
+        conn.execute("UPDATE notificacoes SET lida = 1")
+
     conn.commit()
     conn.close()
 
     return jsonify({"status": "ok"})
+
 
 # ---------- CHAMADOS (listar / novo / visualizar / mensagem / alterar status) ----------
 @app.route("/chamados")
@@ -1616,18 +1606,18 @@ def abrir_chamado():
         try:
             if data_abertura_raw:
                 date_part = datetime.strptime(data_abertura_raw, "%Y-%m-%d")
-                now = datetime.utcnow()
+                now = datetime.now(pytz.UTC)
                 dt = date_part.replace(
                     hour=now.hour, minute=now.minute,
                     second=now.second, microsecond=now.microsecond
                 )
             else:
-                dt = datetime.utcnow()
+                dt = datetime.now(pytz.UTC)
 
             data_to_store = dt.isoformat()
 
         except:
-            data_to_store = datetime.utcnow().isoformat()
+            data_to_store = datetime.now(pytz.UTC).isoformat()
 
         cur = conn.cursor()
         cur.execute("""INSERT INTO chamados 
@@ -1770,7 +1760,7 @@ def enviar_mensagem(id):
         return redirect(url_for("visualizar_chamado", id=id))
 
     conn = get_db_connection()
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(pytz.UTC).isoformat()
 
     anexo_filename = None
     anexo_path = None
@@ -1803,13 +1793,13 @@ def enviar_mensagem(id):
     novo_status = request.form.get("novo_status")
     if novo_status and session.get("tipo") in ["tecnico","admin"]:
         conn.execute("UPDATE chamados SET status=?, data_resolucao=? WHERE id=?",
-                     (novo_status, datetime.utcnow().isoformat() if novo_status == "Concluído" else None, id))
+                     (novo_status, datetime.now(pytz.UTC).isoformat() if novo_status == "Concluído" else None, id))
         conn.commit()
         try:
             notif_text = f"Status alterado para {novo_status} por {session.get('nome')} (#{id})"
             conn.execute("""INSERT INTO notificacoes (mensagem_id, chamado_id, texto, autor_id, autor_nome, lida, criado_em)
                             VALUES (?,?,?,?,?,?,?)""",
-                         (None, id, notif_text, session.get('user_id'), session.get('nome'), 0, datetime.utcnow().isoformat()))
+                         (None, id, notif_text, session.get('user_id'), session.get('nome'), 0, datetime.now(pytz.UTC).isoformat()))
             conn.commit()
         except Exception as e:
             print("Erro notificar status:", e)
@@ -2284,6 +2274,10 @@ def acompanhamento_compras():
         compradores=compradores,
         comprador_id=comprador_id
     )
+
+import sqlite3
+from flask import request, jsonify
+import time
 
 @app.route("/api/acompanhamento_compras/salvar", methods=["POST"])
 @login_required
@@ -4325,7 +4319,7 @@ def csrf_token():
 
 @app.context_processor
 def inject_security_helpers():
-    return {"csrf_token": csrf_token, "static_version": "20260527-secure"}
+    return {"csrf_token": csrf_token, "static_version": "20260527-v2"}
 
 @app.before_request
 def enforce_csrf_protection():
@@ -4370,13 +4364,53 @@ def api_conferencia_pendentes():
     except Exception:
         return jsonify({"total": 0})
 
+# --- ADICIONE ESTE BLOCO NO FINAL DO SEU APP.PY ---
 
-if __name__ == '__main__':
-    # O Render injeta a porta automaticamente na variável de ambiente PORT
-    port = int(os.environ.get("PORT", 10000))
+# Token de segurança (Adicione também nas variáveis de ambiente do Render para maior segurança)
+API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "ChaveSuperSecretaDoIntegrador123!")
+
+@app.route("/api/pedidos/sincronizar", methods=["POST"])
+def api_sincronizar_pedidos():
+    # 1. Validação de segurança por token
+    token_recebido = request.headers.get("X-Sync-Token")
+    if not token_recebido or token_recebido != API_SYNC_TOKEN:
+        return jsonify({"erro": "Acesso não autorizado."}), 401
     
-    # IMPORTANTE: host deve ser '0.0.0.0' e debug deve ser False em produção
-    app.run(host='0.0.0.0', port=port, debug=False)
+    dados = request.json
+    if not dados or "pedidos" not in dados:
+        return jsonify({"erro": "Dados inválidos ou ausentes."}), 400
+    
+    pedidos_recebidos = dados["pedidos"]
+    
+    try:
+        with get_db_connection() as conn:
+            # 2. Garante que a tabela local exista no SQLite com as suas colunas exatas
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS pedidos_erp (
+                    NUMPED TEXT PRIMARY KEY,
+                    DATA_PEDIDO TEXT,
+                    FORNECEDOR TEXT,
+                    DTPREVREC TEXT
+                )
+            """)
+            
+            # 3. Insere ou atualiza os pedidos em massa
+            for p in pedidos_recebidos:
+                conn.execute("""
+                    INSERT INTO pedidos_erp (NUMPED, DATA_PEDIDO, FORNECEDOR, DTPREVREC)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(NUMPED) DO UPDATE SET
+                        DATA_PEDIDO = excluded.DATA_PEDIDO,
+                        FORNECEDOR = excluded.FORNECEDOR,
+                        DTPREVREC = excluded.DTPREVREC
+                """, (str(p['NUMPED']), p['DATA_PEDIDO'], p['FORNECEDOR'], p['DTPREVREC']))
+            
+            conn.commit()
+            
+        return jsonify({"status": "sucesso", "mensagem": f"{len(pedidos_recebidos)} pedidos sincronizados."}), 200
+        
+    except Exception as e:
+        return jsonify({"erro": f"Erro ao gravar no SQLite local: {str(e)}"}), 500
 
 
 
