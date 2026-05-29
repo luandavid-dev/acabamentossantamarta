@@ -4365,15 +4365,13 @@ def api_conferencia_pendentes():
         return jsonify({"total": 0})
 
 
+```python id="j9ht7l"
+import os
+
 if __name__ == "__main__":
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    init_db()
-    app.run(debug=os.environ.get("FLASK_DEBUG", "0") == "1", host=os.environ.get("HOST", "127.0.0.1"), port=int(os.environ.get("PORT", "8080")))
-else:
-    # Inicialização para Gunicorn (Render)
-    with app.app_context():
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        init_db()
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+```
 
 
 
