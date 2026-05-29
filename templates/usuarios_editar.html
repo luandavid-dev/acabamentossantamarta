@@ -1,0 +1,28 @@
+<style>html,body,input,button,select,textarea{font-family:"DM Sans",system-ui,sans-serif !important;}</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+{% extends 'layout.html' %}
+{% block content %}
+<div class="card">
+  <h3>Editar Usuário</h3>
+  <form method="POST" action="{{ url_for('editar_usuario', id=usuario.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input name="nome" class="input" placeholder="Nome" value="{{ usuario.nome }}" required>
+    <input name="usuario" class="input" placeholder="Login (opcional)" value="{{ usuario.usuario }}">
+    <input name="email" class="input" placeholder="E-mail" value="{{ usuario.email }}">
+    <input name="senha" class="input" placeholder="Nova senha (vazio = mantém atual)">
+    <select name="tipo" class="input">
+      <option value="usuario" {% if usuario.tipo=='usuario' %}selected{% endif %}>Usuário</option>
+      <option value="comprador" {% if usuario.tipo=='comprador' %}selected{% endif %}>Comprador</option>
+      <option value="admin" {% if usuario.tipo=='admin' %}selected{% endif %}>Admin</option>
+    </select>
+    <select name="filial_id" class="input">
+      <option value="">Sem filial</option>
+      {% for f in filiais %}<option value="{{ f.id }}" {% if usuario.filial_id==f.id %}selected{% endif %}>{{ f.nome }}</option>{% endfor %}
+    </select>
+    <button class="btn-primary" type="submit">Salvar</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,959 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<div class="page">
+
+    <div class="header">
+
+        <div class="header-left">
+
+            <div class="header-badges">
+
+                <div class="badge-page">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                    REQUERIMENTO
+                </div>
+
+                <div class="badge-status">
+                    <i class="fa-solid fa-clock"></i>
+                    Aberto
+                </div>
+
+            </div>
+
+            <h1 class="page-title">
+                Abertura de Requerimento
+            </h1>
+
+            <p class="page-subtitle">
+                Registro de não conformidades com rastreabilidade de produto, classificação e roteamento ao comprador
+            </p>
+
+        </div>
+
+        <div class="header-actions">
+
+            <a
+                href="{{ url_for('index') if False else '#' }}"
+                onclick="history.back();return false;"
+                class="btn-back"
+            >
+                <i class="fa-solid fa-arrow-left"></i>
+                Voltar
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="summary-grid">
+
+        <div class="summary-card">
+            <span>Data da abertura</span>
+            <strong id="dataResumo">-</strong>
+        </div>
+
+        <div class="summary-card">
+            <span>Código selecionado</span>
+            <strong id="codigoResumo">-</strong>
+        </div>
+
+        <div class="summary-card">
+            <span>Classificação</span>
+            <strong id="classificacaoResumo">-</strong>
+        </div>
+
+    </div>
+
+    <div class="card-form">
+
+        <div class="card-header">
+
+            <div>
+                <h3>
+                    <i class="fa-solid fa-file-circle-plus"></i>
+                    Cadastro do Requerimento
+                </h3>
+
+                <p>
+                    Informe o produto, defeito identificado, filial e comprador responsável
+                </p>
+            </div>
+
+        </div>
+
+        <form
+            method="POST"
+            action="{{ url_for('abrir_chamado') }}"
+            class="form-grid"
+            id="formRequerimento"
+        >
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+
+            <input type="hidden" name="data_abertura" value="{{ now().isoformat() }}">
+            <input type="hidden" name="titulo" id="tituloHidden">
+
+            <div class="form-group">
+
+                <label>
+                    Código
+                </label>
+
+                <input
+                    type="text"
+                    id="codigo"
+                    name="codigo"
+                    placeholder="Ex: 0877"
+                    required
+                    autocomplete="off"
+                    readonly
+                >
+
+            </div>
+
+            <div class="form-group full-3">
+
+                <label>
+                    Produto / Descrição
+                </label>
+
+                <div class="autocomplete-wrapper">
+
+                    <input
+                        type="text"
+                        id="produto"
+                        name="produto"
+                        autocomplete="off"
+                        required
+                        placeholder="Digite o nome, código ou referência do produto..."
+                    >
+
+                    <div
+                        id="lista-produtos"
+                        class="autocomplete-list"
+                    ></div>
+
+                </div>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>
+                    Quantidade
+                </label>
+
+                <input
+                    type="number"
+                    name="quantidade"
+                    id="quantidade"
+                    placeholder="Ex: 2.5"
+                    min="0.01"
+                    step="0.01"
+                    required
+                >
+
+            </div>
+
+            <div class="form-group">
+
+                <label>
+                    Unidade
+                </label>
+
+                <select name="unidade" id="unidade" required>
+                    <option value="UN">UN</option>
+                    <option value="m²">m²</option>
+                    <option value="PÇ">PÇ</option>
+                </select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>
+                    Filial
+                </label>
+
+                <select name="filial_id" required>
+                    <option value="">-- Sem filial --</option>
+                    {% for f in filiais %}
+                        <option value="{{ f.id }}">{{ f.nome }}</option>
+                    {% endfor %}
+                </select>
+
+            </div>
+
+            <div class="form-group">
+
+                <label>
+                    Comprador
+                </label>
+
+                <select name="tecnico_id" required>
+                    <option value="">Selecione um comprador</option>
+                    {% for t in tecnicos %}
+                        {% if t.tipo == 'comprador' %}
+                            <option value="{{ t.id }}">{{ t.nome }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+
+            </div>
+
+            <div class="form-group full">
+
+                <label>
+                    Classificação do Problema
+                </label>
+
+                <select name="prioridade" id="prioridade" required>
+                    <option value="">Selecione</option>
+                    <option value="Quebras na Entrega">Quebras na Entrega</option>
+                    <option value="Defeito de Fábrica">Defeito de Fábrica</option>
+                </select>
+
+            </div>
+
+            <div class="form-group full">
+
+                <label>
+                    Descrição do Defeito
+                </label>
+
+                <textarea
+                    name="descricao"
+                    id="descricao"
+                    rows="5"
+                    required
+                    placeholder="Descreva detalhadamente o defeito identificado..."
+                ></textarea>
+
+            </div>
+
+            <div class="form-actions">
+
+                <button
+                    type="submit"
+                    class="btn-save"
+                >
+                    <i class="fa-solid fa-paper-plane"></i>
+                    Enviar Requerimento
+                </button>
+
+                <a
+                    href="{{ url_for('abrir_chamado') }}"
+                    class="btn-cancel"
+                >
+                    <i class="fa-solid fa-rotate-left"></i>
+                    Limpar
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<style>
+
+:root{
+    --bg:#f3f7fc;
+    --surface:#ffffff;
+    --surface-soft:#f8fafc;
+    --primary:#0b3b75;
+    --primary-2:#1451a3;
+    --accent:#1565c0;
+    --success:#16a34a;
+    --success-bg:#dcfce7;
+    --danger:#dc2626;
+    --danger-bg:#fee2e2;
+    --warning:#d97706;
+    --warning-bg:#fef3c7;
+    --info-bg:#e8f1fd;
+    --border:#dbe7f5;
+    --text:#0f172a;
+    --muted:#64748b;
+    --shadow-sm:0 6px 18px rgba(11,59,117,.06);
+    --shadow-md:0 14px 36px rgba(11,59,117,.10);
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    background:linear-gradient(180deg,#f8fbff 0%,#eef4fb 100%);
+}
+
+.page{
+    max-width:1600px;
+    margin:0 auto;
+    padding:24px;
+    min-height:100vh;
+    font-family:Arial, Helvetica, sans-serif;
+    color:var(--text);
+}
+
+.header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:20px;
+    margin-bottom:20px;
+}
+
+.header-left{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.header-badges{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.badge-page,
+.badge-filial,
+.badge-status{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    width:max-content;
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:800;
+}
+
+.badge-page{
+    background:#dbeafe;
+    color:#1d4ed8;
+}
+
+.badge-filial{
+    background:#ecfdf5;
+    color:#166534;
+    border:1px solid #bbf7d0;
+}
+
+.badge-status{
+    background:var(--warning-bg);
+    color:#92400e;
+    border:1px solid #fde68a;
+}
+
+.page-title{
+    font-size:30px;
+    line-height:1.15;
+    color:var(--text);
+    font-weight:900;
+    margin:0;
+}
+
+.page-subtitle{
+    color:var(--muted);
+    font-size:14px;
+    margin:0;
+}
+
+.header-actions{
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+
+.btn-back{
+    min-height:42px;
+    background:linear-gradient(135deg,var(--primary),var(--primary-2));
+    color:#fff;
+    padding:0 16px;
+    border-radius:13px;
+    text-decoration:none;
+    font-size:13px;
+    font-weight:800;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:9px;
+    box-shadow:0 10px 22px rgba(11,59,117,.18);
+    transition:.2s;
+    border:none;
+    cursor:pointer;
+}
+
+.btn-back:hover{
+    transform:translateY(-2px);
+}
+
+.summary-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:14px;
+    margin-bottom:20px;
+}
+
+.summary-card{
+    background:#fff;
+    border:1px solid #e7eef8;
+    border-radius:18px;
+    padding:18px;
+    box-shadow:var(--shadow-sm);
+    min-width:0;
+}
+
+.summary-card span{
+    display:block;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:900;
+    text-transform:uppercase;
+    margin-bottom:8px;
+}
+
+.summary-card strong{
+    display:block;
+    font-size:18px;
+    font-weight:900;
+    color:var(--text);
+    word-break:break-word;
+}
+
+.card-form{
+    background:#fff;
+    border:1px solid #e7eef8;
+    border-radius:18px;
+    padding:24px;
+    box-shadow:var(--shadow-md);
+}
+
+.card-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    margin-bottom:22px;
+    padding-bottom:20px;
+    border-bottom:1px solid #e7eef8;
+}
+
+.card-header h3{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:21px;
+    font-weight:900;
+    color:var(--text);
+    margin:0 0 6px;
+}
+
+.card-header h3 i{
+    color:var(--accent);
+}
+
+.card-header p{
+    color:var(--muted);
+    font-size:13px;
+    margin:0;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:16px;
+}
+
+.form-group{
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+}
+
+.form-group.full{
+    grid-column:1/-1;
+}
+
+.form-group.full-3{
+    grid-column:span 3;
+}
+
+.form-group label{
+    margin-bottom:8px;
+    font-size:12px;
+    font-weight:900;
+    color:#334155;
+    text-transform:uppercase;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea{
+    width:100%;
+    height:50px;
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:0 14px;
+    background:var(--surface-soft);
+    font-size:14px;
+    color:var(--text);
+    transition:.2s;
+    font-family:inherit;
+}
+
+.form-group textarea{
+    height:auto;
+    min-height:120px;
+    padding:14px;
+    resize:vertical;
+    line-height:1.5;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus{
+    outline:none;
+    border-color:var(--accent);
+    background:#fff;
+    box-shadow:0 0 0 4px rgba(21,101,192,.10);
+}
+
+.form-group input[readonly]{
+    color:#334155;
+    font-weight:800;
+    background:#eef4fb;
+    cursor:not-allowed;
+}
+
+.autocomplete-wrapper{
+    position:relative;
+}
+
+#produto{
+    width:100%;
+}
+
+.autocomplete-list{
+    position:absolute;
+    top:calc(100% + 8px);
+    left:0;
+    right:0;
+    background:#fff;
+    border:1px solid #dbe7f5;
+    border-radius:16px;
+    max-height:360px;
+    overflow:auto;
+    display:none;
+    z-index:999;
+    box-shadow:0 18px 36px rgba(15,23,42,.14);
+}
+
+.autocomplete-item{
+    width:100%;
+    padding:14px 16px;
+    cursor:pointer;
+    border-bottom:1px solid #eef2f7;
+    transition:.2s;
+    background:#fff;
+}
+
+.autocomplete-item:last-child{
+    border-bottom:none;
+}
+
+.autocomplete-item:hover{
+    background:#eff6ff;
+}
+
+.autocomplete-item .produto-linha{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex-wrap:wrap;
+    color:#0d47a1;
+    font-size:13px;
+    font-weight:900;
+    margin-bottom:4px;
+}
+
+.autocomplete-item .produto-codigo,
+.autocomplete-item .produto-referencia{
+    display:inline-flex;
+    align-items:center;
+    white-space:nowrap;
+}
+
+.autocomplete-item .produto-separador{
+    color:#64748b;
+    font-weight:900;
+}
+
+.autocomplete-item .produto-descricao{
+    display:block;
+    color:#334155;
+    font-size:13px;
+    line-height:1.35;
+}
+
+.form-actions{
+    grid-column:1/-1;
+    display:flex;
+    justify-content:flex-end;
+    gap:12px;
+    margin-top:10px;
+    padding-top:22px;
+    border-top:1px solid #e7eef8;
+}
+
+.btn-save,
+.btn-cancel{
+    height:50px;
+    border-radius:14px;
+    padding:0 20px;
+    font-size:14px;
+    font-weight:900;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    transition:.2s;
+}
+
+.btn-save{
+    border:none;
+    background:#16a34a;
+    color:#fff;
+    cursor:pointer;
+    box-shadow:0 10px 22px rgba(22,163,74,.18);
+}
+
+.btn-save:hover{
+    background:#15803d;
+    transform:translateY(-2px);
+}
+
+.btn-cancel{
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--primary);
+    text-decoration:none;
+}
+
+.btn-cancel:hover{
+    background:#eff6ff;
+    border-color:#bfdbfe;
+}
+
+@media(max-width:1200px){
+
+    .form-grid{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+
+    .form-group.full-3{
+        grid-column:1/-1;
+    }
+
+}
+
+@media(max-width:900px){
+
+    .page{
+        padding:16px;
+    }
+
+    .header{
+        flex-direction:column;
+        align-items:stretch;
+    }
+
+    .header-actions,
+    .btn-back{
+        width:100%;
+    }
+
+    .summary-grid{
+        grid-template-columns:1fr;
+    }
+
+    .card-form{
+        padding:18px;
+    }
+
+    .page-title{
+        font-size:26px;
+    }
+
+}
+
+@media(max-width:640px){
+
+    .page{
+        padding:12px;
+    }
+
+    .header-badges{
+        width:100%;
+    }
+
+    .badge-page,
+    .badge-filial,
+    .badge-status{
+        width:100%;
+        justify-content:center;
+    }
+
+    .page-title{
+        font-size:24px;
+    }
+
+    .page-subtitle{
+        font-size:13px;
+    }
+
+    .card-header{
+        flex-direction:column;
+    }
+
+    .form-grid{
+        grid-template-columns:1fr;
+    }
+
+    .form-actions{
+        flex-direction:column;
+    }
+
+    .btn-save,
+    .btn-cancel{
+        width:100%;
+    }
+
+}
+
+</style>
+
+<script>
+
+/* ===================================================== */
+/* REFERÊNCIAS                                            */
+/* ===================================================== */
+
+const formRequerimento = document.getElementById("formRequerimento");
+const produtoInput     = document.getElementById("produto");
+const codigoInput      = document.getElementById("codigo");
+const lista            = document.getElementById("lista-produtos");
+const tituloHidden     = document.getElementById("tituloHidden");
+const quantidadeInput  = document.getElementById("quantidade");
+const unidadeSelect    = document.getElementById("unidade");
+const prioridadeSelect = document.getElementById("prioridade");
+
+const dataResumo          = document.getElementById("dataResumo");
+const codigoResumo        = document.getElementById("codigoResumo");
+const classificacaoResumo = document.getElementById("classificacaoResumo");
+
+let produtoSelecionado = null;
+let buscaAtual = 0;
+
+/* ===================================================== */
+/* DATA DE ABERTURA NO RESUMO                             */
+/* ===================================================== */
+
+function obterDataLocalHoje(){
+    const agora = new Date();
+    const ano = agora.getFullYear();
+    const mes = String(agora.getMonth() + 1).padStart(2, "0");
+    const dia = String(agora.getDate()).padStart(2, "0");
+    return `${dia}/${mes}/${ano}`;
+}
+
+function fixarDataAbertura(){
+    dataResumo.textContent = obterDataLocalHoje();
+}
+
+/* ===================================================== */
+/* AUTOCOMPLETE - SOMENTE PRODUTO DA LISTA                */
+/* ===================================================== */
+
+function texto(valor){
+    return String(valor || "").trim();
+}
+
+function obterCampo(prod, nomes){
+    for (const nome of nomes) {
+        if (prod[nome] !== undefined && prod[nome] !== null && String(prod[nome]).trim() !== "") {
+            return String(prod[nome]).trim();
+        }
+    }
+
+    return "";
+}
+
+function limparListaProdutos(){
+    lista.innerHTML = "";
+    lista.style.display = "none";
+}
+
+function invalidarProdutoSelecionado(){
+    produtoSelecionado = null;
+    codigoInput.value = "";
+    codigoResumo.textContent = "-";
+}
+
+function produtoAtualValido(){
+    if (!produtoSelecionado) {
+        return false;
+    }
+
+    return (
+        texto(produtoInput.value) === produtoSelecionado.descricao &&
+        texto(codigoInput.value) === produtoSelecionado.codigo
+    );
+}
+
+function criarItemProduto(prod){
+    const codigo = obterCampo(prod, ["codpro", "CODPRO", "codigo", "CODIGO", "cod_produto", "COD_PRODUTO"]);
+    const referencia = obterCampo(prod, ["REFERENCIA", "referencia", "ref", "REF", "referência", "Referencia"]);
+    const descricao = obterCampo(prod, ["DESCRICAO_LONGA", "descricao_longa", "descricao", "DESCRICAO", "nome", "NOME"]);
+
+    const item = document.createElement("div");
+    const linha = document.createElement("div");
+    const codigoEl = document.createElement("span");
+    const descricaoEl = document.createElement("span");
+
+    item.className = "autocomplete-item";
+    linha.className = "produto-linha";
+    codigoEl.className = "produto-codigo";
+    descricaoEl.className = "produto-descricao";
+
+    codigoEl.textContent = codigo || "-";
+    linha.appendChild(codigoEl);
+
+    if (referencia) {
+        const separadorEl = document.createElement("span");
+        const referenciaEl = document.createElement("span");
+
+        separadorEl.className = "produto-separador";
+        referenciaEl.className = "produto-referencia";
+
+        separadorEl.textContent = "-";
+        referenciaEl.textContent = referencia;
+
+        linha.appendChild(separadorEl);
+        linha.appendChild(referenciaEl);
+    }
+
+    descricaoEl.textContent = descricao || "-";
+
+    item.appendChild(linha);
+    item.appendChild(descricaoEl);
+
+    item.addEventListener("click", () => {
+        produtoSelecionado = {
+            codigo: codigo,
+            referencia: referencia,
+            descricao: descricao
+        };
+
+        produtoInput.value = descricao;
+        codigoInput.value = codigo;
+        codigoResumo.textContent = codigo || "-";
+        limparListaProdutos();
+    });
+
+    return item;
+}
+
+produtoInput.addEventListener("input", async () => {
+    invalidarProdutoSelecionado();
+
+    const termo = texto(produtoInput.value);
+    const idBusca = ++buscaAtual;
+
+    if (termo.length < 2) {
+        limparListaProdutos();
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/produtos?buscar=${encodeURIComponent(termo)}`);
+
+        if (!resp.ok) {
+            limparListaProdutos();
+            return;
+        }
+
+        const dados = await resp.json();
+
+        if (idBusca !== buscaAtual) {
+            return;
+        }
+
+        lista.innerHTML = "";
+
+        if (!Array.isArray(dados) || dados.length === 0) {
+            limparListaProdutos();
+            return;
+        }
+
+        dados.forEach(prod => {
+            lista.appendChild(criarItemProduto(prod));
+        });
+
+        lista.style.display = "block";
+    } catch (err) {
+        console.error(err);
+        limparListaProdutos();
+    }
+});
+
+/* FECHAR AUTOCOMPLETE AO CLICAR FORA */
+document.addEventListener("click", (e) => {
+    if (!e.target.closest(".autocomplete-wrapper")) {
+        lista.style.display = "none";
+    }
+});
+
+/* ===================================================== */
+/* RESUMO DINÂMICO - CLASSIFICAÇÃO                        */
+/* ===================================================== */
+
+prioridadeSelect.addEventListener("change", () => {
+    classificacaoResumo.textContent = prioridadeSelect.value || "-";
+});
+
+/* ===================================================== */
+/* SUBMIT - BLOQUEIA PRODUTO FORA DA LISTA                */
+/* ===================================================== */
+
+formRequerimento.addEventListener("submit", function(event){
+    const cod  = texto(codigoInput.value);
+    const prod = texto(produtoInput.value);
+    const qtde = texto(quantidadeInput.value);
+    const un   = unidadeSelect.value;
+
+    if (!produtoAtualValido()) {
+        event.preventDefault();
+        alert("Selecione um produto válido na lista do autocomplete. Não é permitido preencher produto manualmente.");
+        produtoInput.focus();
+        return;
+    }
+
+    tituloHidden.value = `${cod} - ${prod} - ${qtde} ${un}`;
+});
+
+/* ===================================================== */
+/* INIT                                                   */
+/* ===================================================== */
+
+window.addEventListener("load", function(){
+    fixarDataAbertura();
+});
+
+</script>
+
+{% endblock %}

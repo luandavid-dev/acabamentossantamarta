@@ -1,0 +1,1543 @@
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+{% extends "layout.html" %}
+
+{% block content %}
+
+<style>
+html,body,input,button,select,textarea{font-family:"DM Sans",system-ui,sans-serif !important;}
+
+
+:root{
+  --bg:#f3f7fc;
+  --surface:#ffffff;
+  --surface-soft:#f8fafc;
+  --primary:#0b3b75;
+  --primary-2:#1451a3;
+  --accent:#1565c0;
+  --success:#16a34a;
+  --success-bg:#dcfce7;
+  --danger:#dc2626;
+  --danger-bg:#fee2e2;
+  --warning:#d97706;
+  --warning-bg:#fef3c7;
+  --info-bg:#e8f1fd;
+  --border:#dbe7f5;
+  --text:#0f172a;
+  --muted:#64748b;
+  --shadow-sm:0 6px 18px rgba(11,59,117,.06);
+  --shadow-md:0 14px 36px rgba(11,59,117,.10);
+}
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+  background:linear-gradient(180deg,#f8fbff 0%,#eef4fb 100%);
+  font-family:Inter, Arial, Helvetica, sans-serif;
+  color:var(--text);
+}
+
+.page{
+  max-width:1600px;
+  margin:0 auto;
+  padding:24px;
+  min-height:100vh;
+}
+
+/* ===================== HEADER ===================== */
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:20px;
+  margin-bottom:20px;
+}
+
+.header-title{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.header-badges{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.badge-page,
+.badge-admin{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 14px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:900;
+  width:max-content;
+}
+
+.badge-page{
+  background:#dbeafe;
+  color:#1d4ed8;
+}
+
+.badge-admin{
+  background:#ecfdf5;
+  color:#166534;
+  border:1px solid #bbf7d0;
+}
+
+.header h1{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:30px;
+  font-weight:900;
+  color:var(--text);
+  margin:0;
+}
+
+.header h1 i{
+  color:var(--accent);
+}
+
+.header p{
+  color:var(--muted);
+  font-size:14px;
+  margin:0;
+}
+
+.header-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+
+.btn-filter,
+.btn-link{
+  min-height:42px;
+  border-radius:13px;
+  padding:0 16px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  font-size:13px;
+  font-weight:900;
+  text-decoration:none;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.btn-filter{
+  border:none;
+  background:linear-gradient(135deg,var(--primary),var(--primary-2));
+  color:#fff;
+  box-shadow:0 10px 22px rgba(11,59,117,.18);
+}
+
+.btn-link{
+  border:1px solid var(--border);
+  background:#fff;
+  color:var(--primary);
+}
+
+.btn-filter:hover,
+.btn-link:hover{
+  transform:translateY(-2px);
+}
+
+/* ===================== FILTROS ===================== */
+.filters-card{
+  display:none;
+  background:#fff;
+  border:1px solid #e7eef8;
+  border-radius:18px;
+  padding:16px;
+  margin-bottom:20px;
+  box-shadow:var(--shadow-sm);
+}
+
+.filters-card.show{
+  display:block;
+}
+
+.filtro-form{
+  display:grid;
+  grid-template-columns:1.4fr 1fr 1fr 1fr 1fr 1fr auto auto;
+  gap:10px;
+}
+
+.filtro-form input,
+.filtro-form select{
+  width:100%;
+  height:44px;
+  border:1px solid var(--border);
+  border-radius:13px;
+  background:var(--surface-soft);
+  padding:0 12px;
+  font-size:13px;
+  color:var(--text);
+}
+
+.filtro-form input:focus,
+.filtro-form select:focus{
+  outline:none;
+  border-color:var(--accent);
+  background:#fff;
+  box-shadow:0 0 0 4px rgba(21,101,192,.10);
+}
+
+/* ===================== STATUS CARDS (4 colunas) ===================== */
+.executive-strip{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+  margin-bottom:20px;
+}
+
+.decision-card{
+  background:#fff;
+  border:1px solid #e7eef8;
+  border-radius:20px;
+  padding:18px;
+  box-shadow:var(--shadow-sm);
+  min-width:0;
+  position:relative;
+  overflow:hidden;
+  transition:.25s;
+}
+
+.decision-card:hover{
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-md);
+}
+
+.decision-card::before{
+  content:"";
+  position:absolute;
+  inset:0 auto 0 0;
+  width:5px;
+}
+
+.decision-card.queue::before    { background:#d97706; }
+.decision-card.risk::before     { background:#dc2626; }
+.decision-card.info::before     { background:var(--accent); }
+.decision-card.done::before     { background:var(--success); }
+
+.decision-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+.decision-icon{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:17px;
+}
+
+.decision-card.queue .decision-icon{
+  background:var(--warning-bg);
+  color:#92400e;
+}
+
+.decision-card.risk .decision-icon{
+  background:var(--danger-bg);
+  color:#b91c1c;
+}
+
+.decision-card.info .decision-icon{
+  background:var(--info-bg);
+  color:var(--accent);
+}
+
+.decision-card.done .decision-icon{
+  background:var(--success-bg);
+  color:#166534;
+}
+
+.decision-card span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  margin-bottom:7px;
+  letter-spacing:.4px;
+}
+
+.decision-card strong{
+  display:block;
+  font-size:30px;
+  font-weight:900;
+  line-height:1;
+  color:var(--text);
+}
+
+.decision-card small{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+  display:block;
+  margin-top:8px;
+}
+
+/* ===================== KPIs ===================== */
+.kpis{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:14px;
+  margin-bottom:20px;
+}
+
+.kpi{
+  background:#fff;
+  border:1px solid #e7eef8;
+  border-radius:18px;
+  padding:16px;
+  box-shadow:var(--shadow-sm);
+  min-width:0;
+  transition:.25s;
+}
+
+.kpi:hover{
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-md);
+}
+
+.kpi span{
+  display:block;
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:8px;
+  letter-spacing:.4px;
+}
+
+.kpi strong{
+  display:block;
+  font-size:24px;
+  line-height:1.05;
+  font-weight:900;
+  color:var(--text);
+  word-break:break-word;
+}
+
+.kpi small{
+  display:block;
+  margin-top:7px;
+  font-size:12px;
+  font-weight:700;
+  color:var(--muted);
+}
+
+/* ===================== SEÇÕES E CARDS ===================== */
+.section{
+  margin-top:20px;
+}
+
+.section-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:14px;
+}
+
+.section-head h2{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:22px;
+  font-weight:900;
+  margin:0;
+}
+
+.section-head h2 i{
+  color:var(--accent);
+}
+
+.section-head p{
+  margin:6px 0 0;
+  color:var(--muted);
+  font-size:13px;
+}
+
+.grid{
+  display:grid;
+  gap:14px;
+}
+
+.grid.two{
+  grid-template-columns:1.18fr .82fr;
+}
+
+.grid.three{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+
+.card{
+  background:#fff;
+  border:1px solid #e7eef8;
+  border-radius:18px;
+  padding:18px;
+  box-shadow:var(--shadow-sm);
+  min-width:0;
+}
+
+.card-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:14px;
+  padding-bottom:14px;
+  border-bottom:1px solid #eef2f7;
+}
+
+.card-title h3{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font-size:15px;
+  font-weight:900;
+  margin:0;
+  text-transform:uppercase;
+  letter-spacing:.4px;
+}
+
+.card-title h3 i{
+  color:var(--accent);
+}
+
+.card-title .pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:#eef4fb;
+  color:var(--primary);
+  font-size:11px;
+  font-weight:900;
+  padding:5px 10px;
+  border-radius:999px;
+  text-transform:uppercase;
+  letter-spacing:.3px;
+}
+
+/* ===================== CHART BOXES ===================== */
+.chart-box{
+  height:300px;
+  position:relative;
+}
+
+.chart-box.compact{
+  height:220px;
+}
+
+/* ===================== RANK ===================== */
+.rank{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.rank-item{
+  display:grid;
+  grid-template-columns:34px minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  padding:10px;
+  border:1px solid #eef2f7;
+  border-radius:14px;
+  background:#f8fafc;
+  transition:.2s;
+}
+
+.rank-item:hover{
+  background:#eef4fb;
+  border-color:#dbe7f5;
+}
+
+.rank-number{
+  width:30px;
+  height:30px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#e8f1fd;
+  color:#0d47a1;
+  font-size:12px;
+  font-weight:900;
+}
+
+.rank-item:nth-child(1) .rank-number{ background:linear-gradient(135deg,#fde68a,#f59e0b); color:#78350f; }
+.rank-item:nth-child(2) .rank-number{ background:linear-gradient(135deg,#e2e8f0,#94a3b8); color:#1e293b; }
+.rank-item:nth-child(3) .rank-number{ background:linear-gradient(135deg,#fed7aa,#c2410c); color:#fff; }
+
+.rank-product{
+  min-width:0;
+}
+
+.rank-product strong{
+  display:block;
+  font-size:13px;
+  color:var(--text);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.rank-product small{
+  display:block;
+  font-size:12px;
+  color:var(--muted);
+  margin-top:3px;
+}
+
+.rank-value{
+  font-size:13px;
+  font-weight:900;
+  color:var(--primary);
+  text-align:right;
+  white-space:nowrap;
+}
+
+/* ===================== STATUS GRID ===================== */
+.status-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+
+.status-card{
+  border-radius:16px;
+  padding:14px;
+  border:1px solid #eef2f7;
+  background:#f8fafc;
+  text-align:center;
+}
+
+.status-card span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  margin-bottom:8px;
+  letter-spacing:.4px;
+}
+
+.status-card strong{
+  font-size:24px;
+  font-weight:900;
+}
+
+.status-card.open    strong{ color:#92400e; }
+.status-card.progress strong{ color:#0d47a1; }
+.status-card.done    strong{ color:#166534; }
+
+/* ===================== INSIGHTS ===================== */
+.insight-list{
+  display:grid;
+  gap:10px;
+}
+
+.insight{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  padding:13px;
+  border-radius:16px;
+  border:1px solid #eef2f7;
+  background:#f8fafc;
+  transition:.2s;
+}
+
+.insight:hover{
+  background:#fff;
+  border-color:#dbe7f5;
+  box-shadow:var(--shadow-sm);
+}
+
+.insight i{
+  width:34px;
+  height:34px;
+  border-radius:11px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+}
+
+.insight.danger  i{ background:var(--danger-bg);  color:#b91c1c; }
+.insight.warning i{ background:var(--warning-bg); color:#92400e; }
+.insight.info    i{ background:var(--info-bg);    color:#0d47a1; }
+.insight.success i{ background:var(--success-bg); color:#166534; }
+
+.insight strong{
+  display:block;
+  font-size:13px;
+  margin-bottom:4px;
+  color:var(--text);
+}
+
+.insight span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.45;
+  font-weight:700;
+}
+
+/* ===================== TABELA ===================== */
+.table-wrap{
+  width:100%;
+  overflow:auto;
+}
+
+table{
+  width:100%;
+  min-width:820px;
+  border-collapse:collapse;
+}
+
+thead th{
+  text-align:left;
+  padding:12px 10px;
+  background:#f8fafc;
+  color:#475569;
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  border-bottom:1px solid #e7eef8;
+  letter-spacing:.4px;
+}
+
+tbody td{
+  padding:12px 10px;
+  border-bottom:1px solid #eef2f7;
+  font-size:12px;
+  color:var(--text);
+  vertical-align:middle;
+}
+
+tbody tr:last-child td{
+  border-bottom:none;
+}
+
+tbody tr:hover{
+  background:#f8fbff;
+}
+
+.product-cell{
+  font-weight:800;
+  max-width:360px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.status-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:999px;
+  padding:6px 9px;
+  font-size:10px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.3px;
+}
+
+.status-pill.aberto      { background:var(--warning-bg); color:#92400e; }
+.status-pill.em-analise  { background:var(--info-bg);    color:#0d47a1; }
+.status-pill.finalizado  { background:var(--success-bg); color:#166534; }
+
+.diff-pos{ color:#0d47a1; font-weight:900; }
+.diff-neg{ color:#991b1b; font-weight:900; }
+.diff-ok { color:#166534; font-weight:900; }
+
+/* ===================== COMPRAS LISTA ===================== */
+.compra-list{
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+
+.compra-item{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  border-radius:14px;
+  background:#f8fafc;
+  border:1px solid #eef2f7;
+  transition:.2s;
+}
+
+.compra-item:hover{
+  background:#eef4fb;
+}
+
+.compra-item strong{
+  color:var(--text);
+  font-size:13px;
+}
+
+.compra-item span{
+  color:var(--accent);
+  font-weight:900;
+  font-size:14px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* ===================== EMPTY ===================== */
+.empty{
+  border:1px dashed #cbd5e1;
+  background:#f8fafc;
+  border-radius:16px;
+  padding:26px;
+  text-align:center;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:800;
+}
+
+/* ===================== RESPONSIVO ===================== */
+@media(max-width:1400px){
+  .executive-strip{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .kpis{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .filtro-form{ grid-template-columns:repeat(4,minmax(0,1fr)); }
+}
+
+@media(max-width:1000px){
+  .page{ padding:16px; }
+  .header{ flex-direction:column; align-items:stretch; }
+  .header-actions{ width:100%; }
+  .btn-filter, .btn-link{ width:100%; }
+  .grid.two, .grid.three{ grid-template-columns:1fr; }
+  .status-grid{ grid-template-columns:1fr; }
+}
+
+@media(max-width:720px){
+  .page{ padding:12px; }
+  .header h1{ font-size:24px; }
+  .header-badges{ width:100%; }
+  .badge-page, .badge-admin{ width:100%; justify-content:center; }
+  .header-actions{ flex-direction:column; }
+  .executive-strip, .kpis{ grid-template-columns:1fr; }
+  .filtro-form{ grid-template-columns:1fr; }
+  .chart-box{ height:240px; }
+  table{ min-width:820px; }
+}
+
+</style>
+
+<div class="page">
+
+  <!-- ========================= HEADER ========================= -->
+  <div class="header">
+
+    <div class="header-title">
+
+      <div class="header-badges">
+        <div class="badge-page">
+          <i class="fa-solid fa-gauge-high"></i>
+          DASHBOARD ERP
+        </div>
+        <div class="badge-admin">
+          <i class="fa-solid fa-user-shield"></i>
+          Decisão operacional
+        </div>
+      </div>
+
+      <h1>
+        <i class="fa-solid fa-chart-line"></i>
+        Painel Executivo
+      </h1>
+
+      <p>
+        Visão consolidada de estoque, conferência, compras e requerimentos
+      </p>
+
+    </div>
+
+    <div class="header-actions">
+
+      <button type="button" class="btn-filter" onclick="toggleFiltro()">
+        <i class="fa-solid fa-filter"></i>
+        Filtros
+      </button>
+
+      <a href="{{ url_for('dashboard') }}" class="btn-link">
+        <i class="fa-solid fa-rotate-left"></i>
+        Limpar
+      </a>
+
+    </div>
+
+  </div>
+
+  <!-- ========================= FILTROS ========================= -->
+  <div id="filtros" class="filters-card">
+
+    <form method="get" class="filtro-form">
+
+      <select name="usuario">
+        <option value="">Usuário / conferente</option>
+        {% for usuario in usuarios_dashboard %}
+          <option value="{{ usuario.nome }}"
+                  {% if filtros.usuario == usuario.nome %}selected{% endif %}>
+            {{ usuario.nome }}
+          </option>
+        {% endfor %}
+      </select>
+
+      <select name="status">
+        <option value="">Status requerimento</option>
+        <option value="Aberto"       {% if filtros.status == 'Aberto'       %}selected{% endif %}>Aberto</option>
+        <option value="Em andamento" {% if filtros.status == 'Em Andamento' %}selected{% endif %}>Em Andamento</option>
+        <option value="Concluído"    {% if filtros.status == 'Concluído'    %}selected{% endif %}>Concluído</option>
+      </select>
+
+      <select name="status_ajuste">
+        <option value="">Status ajuste</option>
+        <option value="ABERTO"     {% if filtros.status_ajuste == 'ABERTO'     %}selected{% endif %}>Aberto</option>
+        <option value="EM ANALISE" {% if filtros.status_ajuste == 'EM ANALISE' %}selected{% endif %}>Em Análise</option>
+        <option value="FINALIZADO" {% if filtros.status_ajuste == 'FINALIZADO' %}selected{% endif %}>Finalizado</option>
+      </select>
+
+      <input type="date" name="inicio" value="{{ filtros.inicio }}">
+      <input type="date" name="fim"    value="{{ filtros.fim }}">
+
+      <button class="btn-filter" type="submit">
+        <i class="fa-solid fa-check"></i>
+        Aplicar
+      </button>
+
+      <a href="{{ url_for('dashboard') }}" class="btn-link">Limpar</a>
+
+    </form>
+
+  </div>
+
+  <!-- ========================= STATUS CARDS (4 cols) ========================= -->
+  <div class="executive-strip">
+
+    <div class="decision-card queue">
+      <div class="decision-top">
+        <div>
+          <span>Fila aberta</span>
+          <strong>{{ ajuste_status_counts.get('ABERTO', 0) }}</strong>
+        </div>
+        <div class="decision-icon"><i class="fa-solid fa-clock"></i></div>
+      </div>
+      <small>Ajustes aguardando tratativa</small>
+    </div>
+
+    <div class="decision-card risk">
+      <div class="decision-top">
+        <div>
+          <span>Divergentes</span>
+          <strong>{{ total_divergentes }}</strong>
+        </div>
+        <div class="decision-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      </div>
+      <small>{{ percentual_ajustes_divergentes }}% dos ajustes</small>
+    </div>
+
+    <div class="decision-card info">
+      <div class="decision-top">
+        <div>
+          <span>Em análise</span>
+          <strong>{{ ajuste_status_counts.get('EM ANALISE', 0) }}</strong>
+        </div>
+        <div class="decision-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
+      </div>
+      <small>Tratativas em andamento</small>
+    </div>
+
+    <div class="decision-card done">
+      <div class="decision-top">
+        <div>
+          <span>Finalizados</span>
+          <strong>{{ ajuste_status_counts.get('FINALIZADO', 0) }}</strong>
+        </div>
+        <div class="decision-icon"><i class="fa-solid fa-circle-check"></i></div>
+      </div>
+      <small>Encerrados no ERP</small>
+    </div>
+
+  </div>
+
+  <!-- ========================= KPIs ========================= -->
+  <div class="kpis">
+
+    <div class="kpi">
+      <span>Total de Ajustes</span>
+      <strong>{{ total_ajustes }}</strong>
+      <small>{{ total_corretos }} sem diferença</small>
+    </div>
+
+    
+    <div class="kpi">
+      <span>Requerimentos</span>
+      <strong>{{ total_chamados }}</strong>
+      <small>{{ percentual_chamados_abertos }}% abertos</small>
+    </div>
+
+    <div class="kpi">
+      <span>Compras (Valor)</span>
+      <strong>R$ {{ compras_valor_total_fmt }}</strong>
+      <small>{{ compras_quantidade_total }} registros</small>
+    </div>
+
+    <div class="kpi">
+      <span>Taxa de Conformidade</span>
+      <strong>
+        {% if total_ajustes and total_ajustes > 0 %}
+          {{ "%.1f"|format((total_corretos / total_ajustes) * 100) }}%
+        {% else %}
+          0,0%
+        {% endif %}
+      </strong>
+      <small>Ajustes sem divergência</small>
+    </div>
+
+  </div>
+
+  <!-- ========================= SEÇÃO 1: ESTOQUE ========================= -->
+  <section class="section">
+
+    <div class="section-head">
+      <div>
+        <h2>
+          <i class="fa-solid fa-boxes-stacked"></i>
+          Central de Decisão de Estoque
+        </h2>
+        <p>Onde agir primeiro: produto, filial, pátio e conferência</p>
+      </div>
+    </div>
+
+    <div class="grid two">
+
+      <!-- TOP PRODUTOS -->
+      <div class="card">
+
+        <div class="card-title">
+          <h3>
+            <i class="fa-solid fa-ranking-star"></i>
+            Produtos que exigem atenção
+          </h3>
+          <span class="pill">Top 8</span>
+        </div>
+
+        {% if top_produtos_furos %}
+          <div class="rank">
+            {% for item in top_produtos_furos[:8] %}
+              <div class="rank-item">
+                <div class="rank-number">{{ loop.index }}</div>
+                <div class="rank-product">
+                  <strong title="{{ item.produto }}">{{ item.produto }}</strong>
+                  <small>{{ item.quantidade }} ajuste(s) &middot; Dif. líquida {{ "%.2f"|format(item.dif_liquida or 0) }}</small>
+                </div>
+                <div class="rank-value">{{ "%.2f"|format(item.total_qtde or 0) }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty">Nenhum produto encontrado.</div>
+        {% endif %}
+
+      </div>
+
+      <!-- LEITURA GERENCIAL -->
+      <div class="card">
+
+        <div class="card-title">
+          <h3>
+            <i class="fa-solid fa-lightbulb"></i>
+            Leitura Gerencial
+          </h3>
+          <span class="pill">Insights</span>
+        </div>
+
+        <div class="insight-list">
+
+          <div class="insight danger">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div>
+              <strong>Atacar divergências abertas</strong>
+              <span>{{ total_divergentes }} ajuste(s) possuem diferença física e podem afetar disponibilidade ou inventário.</span>
+            </div>
+          </div>
+
+          <div class="insight warning">
+            <i class="fa-solid fa-hourglass-half"></i>
+            <div>
+              <strong>Reduzir fila operacional</strong>
+              <span>{{ ajuste_status_counts.get('ABERTO', 0) }} ajuste(s) ainda estão abertos e precisam de análise/conclusão.</span>
+            </div>
+          </div>
+
+          <div class="insight info">
+            <i class="fa-solid fa-user-check"></i>
+            <div>
+              <strong>Acompanhar conferentes</strong>
+              <span>Use o filtro por usuário/conferente para analisar concentração de ajustes e apoiar auditorias.</span>
+            </div>
+          </div>
+
+          <div class="insight success">
+            <i class="fa-solid fa-circle-check"></i>
+            <div>
+              <strong>Manter padrão de fechamento</strong>
+              <span>{{ ajuste_status_counts.get('FINALIZADO', 0) }} ajuste(s) já foram finalizados, mantendo rastreabilidade no ERP.</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="grid three" style="margin-top:14px;">
+
+      <!-- FILIAIS -->
+      <div class="card">
+
+        <div class="card-title">
+          <h3>
+            <i class="fa-solid fa-building"></i>
+            Filiais Prioritárias
+          </h3>
+          <span class="pill">Top 7</span>
+        </div>
+
+        {% if ajustes_por_filial %}
+          <div class="rank">
+            {% for item in ajustes_por_filial[:7] %}
+              <div class="rank-item">
+                <div class="rank-number">{{ loop.index }}</div>
+                <div class="rank-product">
+                  <strong>{{ item.filial }}</strong>
+                  <small>{{ item.divergentes }} divergente(s)</small>
+                </div>
+                <div class="rank-value">{{ item.quantidade }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty">Nenhuma filial encontrada.</div>
+        {% endif %}
+
+      </div>
+
+      <!-- PÁTIOS -->
+      <div class="card">
+
+        <div class="card-title">
+          <h3>
+            <i class="fa-solid fa-location-dot"></i>
+            Pátios Prioritários
+          </h3>
+          <span class="pill">Top 7</span>
+        </div>
+
+        {% if ajustes_por_patio %}
+          <div class="rank">
+            {% for item in ajustes_por_patio[:7] %}
+              <div class="rank-item">
+                <div class="rank-number">{{ loop.index }}</div>
+                <div class="rank-product">
+                  <strong>{{ item.patio }}</strong>
+                  <small>{{ item.divergentes }} divergente(s)</small>
+                </div>
+                <div class="rank-value">{{ item.quantidade }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty">Nenhum pátio encontrado.</div>
+        {% endif %}
+
+      </div>
+
+      <!-- DONUT STATUS -->
+      <div class="card">
+
+        <div class="card-title">
+          <h3>
+            <i class="fa-solid fa-signal"></i>
+            Distribuição por Status
+          </h3>
+          <span class="pill">Ajustes</span>
+        </div>
+
+        <div class="status-grid">
+          <div class="status-card open">
+            <span>Aberto</span>
+            <strong>{{ ajuste_status_counts.get('ABERTO', 0) }}</strong>
+          </div>
+          <div class="status-card progress">
+            <span>Em análise</span>
+            <strong>{{ ajuste_status_counts.get('EM ANALISE', 0) }}</strong>
+          </div>
+          <div class="status-card done">
+            <span>Finalizado</span>
+            <strong>{{ ajuste_status_counts.get('FINALIZADO', 0) }}</strong>
+          </div>
+        </div>
+
+        <div class="chart-box compact" style="margin-top:16px;">
+          <canvas id="donutAjustes"></canvas>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="grid two" style="margin-top:14px;">
+
+      <!-- BAR PRODUTOS -->
+      <div class="card">
+
+        <div class="card-title">
+          <h3>
+            <i class="fa-solid fa-chart-column"></i>
+            Produtos por Volume Apurado
+          </h3>
+          <span class="pill">Top 10</span>
+        </div>
+
+        <div class="chart-box">
+          <canvas id="barAjustes"></canvas>
+        </div>
+
+      </div>
+
+      <!-- ÚLTIMOS AJUSTES -->
+      <div class="card">
+
+        <div class="card-title">
+          <h3>
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            Últimos Ajustes
+          </h3>
+          <span class="pill">Fila recente</span>
+        </div>
+
+        {% if ajustes_recentes %}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Produto</th>
+                  <th>Status</th>
+                  <th>Dif.</th>
+                  <th>Usuário/Conferente</th>
+                  <th>Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in ajustes_recentes %}
+                  <tr>
+                    <td>#{{ item.id }}</td>
+                    <td class="product-cell" title="{{ item.codpro }} — {{ item.descricao }}">
+                      {{ item.codpro }} — {{ item.descricao }}
+                    </td>
+                    <td>
+                      <span class="status-pill {{ item.status|lower|replace(' ', '-') }}">
+                        {{ item.status }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="{% if item.dif == 0 %}diff-ok{% elif item.dif > 0 %}diff-pos{% else %}diff-neg{% endif %}">
+                        {% if item.dif > 0 %}+{% endif %}{{ "%.2f"|format(item.dif or 0) }}
+                      </span>
+                    </td>
+                    <td>{{ item.usuario }}</td>
+                    <td>{{ item.data }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="empty">Nenhum ajuste recente encontrado.</div>
+        {% endif %}
+
+      </div>
+
+    </div>
+
+  </section>
+
+  <!-- ========================= SEÇÃO 2: REQUERIMENTOS / COMPRAS ========================= -->
+  <section class="section">
+
+    <div class="section-head">
+      <div>
+        <h2>
+          <i class="fa-solid fa-clipboard-list"></i>
+          Requerimentos e Compras
+        </h2>
+        <p>Apoio ao abastecimento, tratativas e acompanhamento financeiro</p>
+      </div>
+    </div>
+
+    <div class="grid two">
+
+      <div class="card">
+
+        <div class="card-title">
+          <h3>
+            <i class="fa-solid fa-chart-bar"></i>
+            Requerimentos por Produto
+          </h3>
+          <span class="pill">Top 10</span>
+        </div>
+
+        <div class="chart-box">
+          <canvas id="barChamados"></canvas>
+        </div>
+
+      </div>
+
+      <div class="card">
+
+        <div class="card-title">
+          <h3>
+            <i class="fa-solid fa-cart-shopping"></i>
+            Compras por Status
+          </h3>
+          <span class="pill">Distribuição</span>
+        </div>
+
+        {% if compras_stats %}
+          <div class="compra-list">
+            {% for item in compras_stats if item.total_valor > 0 %}
+              <div class="compra-item">
+                <strong>{{ item.status }}</strong>
+                <span>R$ {{ "{:,.2f}".format(item.total_valor or 0).replace(",", "X").replace(".", ",").replace("X", ".") }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty">Nenhuma compra encontrada.</div>
+        {% endif %}
+
+        <div class="chart-box compact" style="margin-top:16px;">
+          <canvas id="donutCompras"></canvas>
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+/* ===================================================== */
+/* TOGGLE DE FILTROS                                      */
+/* ===================================================== */
+
+function toggleFiltro(){
+  document.getElementById("filtros").classList.toggle("show");
+}
+
+/* ===================================================== */
+/* CHART.JS — DEFAULTS GLOBAIS PROFISSIONAIS              */
+/* ===================================================== */
+
+Chart.defaults.font.family = "'Inter','Segoe UI',Arial,sans-serif";
+Chart.defaults.font.size   = 12;
+Chart.defaults.color       = "#475569";
+
+Chart.defaults.plugins.tooltip.backgroundColor   = "rgba(15,23,42,0.96)";
+Chart.defaults.plugins.tooltip.titleColor        = "#fff";
+Chart.defaults.plugins.tooltip.bodyColor         = "#cbd5e1";
+Chart.defaults.plugins.tooltip.borderColor       = "rgba(255,255,255,.08)";
+Chart.defaults.plugins.tooltip.borderWidth       = 1;
+Chart.defaults.plugins.tooltip.padding           = 12;
+Chart.defaults.plugins.tooltip.cornerRadius      = 10;
+Chart.defaults.plugins.tooltip.displayColors     = true;
+Chart.defaults.plugins.tooltip.boxPadding        = 6;
+Chart.defaults.plugins.tooltip.titleFont         = { weight: "700", size: 13 };
+Chart.defaults.plugins.tooltip.bodyFont          = { weight: "600", size: 12 };
+
+Chart.defaults.plugins.legend.labels.boxWidth    = 10;
+Chart.defaults.plugins.legend.labels.boxHeight   = 10;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.padding     = 14;
+Chart.defaults.plugins.legend.labels.font        = { weight: "700", size: 12 };
+
+Chart.defaults.animation.duration = 750;
+Chart.defaults.animation.easing   = "easeOutQuart";
+
+/* ===================================================== */
+/* HELPERS                                                */
+/* ===================================================== */
+
+function fmtNum(v){
+  if (v === null || v === undefined) return "0";
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }).format(v);
+}
+
+function fmtBRL(v){
+  if (v === null || v === undefined) return "R$ 0,00";
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  }).format(v);
+}
+
+/**
+ * Cria um gradiente vertical para barras horizontais (eixo X)
+ */
+function makeBarGradient(ctx, area, fromColor, toColor){
+  if (!area) return fromColor;
+  const g = ctx.createLinearGradient(area.left, 0, area.right, 0);
+  g.addColorStop(0, fromColor);
+  g.addColorStop(1, toColor);
+  return g;
+}
+
+/* ===================================================== */
+/* GRÁFICO 1 — Requerimentos por Produto (barra horiz.)   */
+/* ===================================================== */
+
+const ctxChamados = document.getElementById("barChamados");
+
+new Chart(ctxChamados, {
+  type: "bar",
+  data: {
+    labels: {{ charts.chamados_labels|tojson }},
+    datasets: [{
+      label: "Requerimentos",
+      data: {{ charts.chamados_values|tojson }},
+      backgroundColor: function(ctx){
+        const chart = ctx.chart;
+        const { ctx: c, chartArea } = chart;
+        return makeBarGradient(c, chartArea, "#1565c0", "#5b9bd5");
+      },
+      borderRadius: 8,
+      borderSkipped: false,
+      barThickness: 18,
+      hoverBackgroundColor: "#0b3b75"
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: "y",
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => " " + fmtNum(ctx.parsed.x) + " requerimento(s)"
+        }
+      }
+    },
+    scales: {
+      x: {
+        beginAtZero: true,
+        grid: { color: "#eef2f7", drawBorder: false },
+        border: { display: false },
+        ticks: { color: "#64748b", font: { weight: "600" } }
+      },
+      y: {
+        grid: { display: false, drawBorder: false },
+        border: { display: false },
+        ticks: { color: "#0f172a", font: { size: 11, weight: "700" } }
+      }
+    }
+  }
+});
+
+/* ===================================================== */
+/* GRÁFICO 2 — Produtos por Volume Apurado (barra horiz.) */
+/* ===================================================== */
+
+const ctxAjustes = document.getElementById("barAjustes");
+
+new Chart(ctxAjustes, {
+  type: "bar",
+  data: {
+    labels: {{ charts.ajustes_produtos_labels|tojson }},
+    datasets: [{
+      label: "Volume",
+      data: {{ charts.ajustes_produtos_values|tojson }},
+      backgroundColor: function(ctx){
+        const chart = ctx.chart;
+        const { ctx: c, chartArea } = chart;
+        return makeBarGradient(c, chartArea, "#0b3b75", "#1e6dc8");
+      },
+      borderRadius: 8,
+      borderSkipped: false,
+      barThickness: 18,
+      hoverBackgroundColor: "#06234a"
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: "y",
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => " Volume: " + fmtNum(ctx.parsed.x)
+        }
+      }
+    },
+    scales: {
+      x: {
+        beginAtZero: true,
+        grid: { color: "#eef2f7", drawBorder: false },
+        border: { display: false },
+        ticks: { color: "#64748b", font: { weight: "600" } }
+      },
+      y: {
+        grid: { display: false, drawBorder: false },
+        border: { display: false },
+        ticks: { color: "#0f172a", font: { size: 11, weight: "700" } }
+      }
+    }
+  }
+});
+
+/* ===================================================== */
+/* GRÁFICO 3 — Donut Status dos Ajustes                   */
+/* ===================================================== */
+
+const ctxDonut = document.getElementById("donutAjustes");
+
+const ajustesStatusValues = {{ charts.ajustes_status_values|tojson }};
+const totalAjustesStatus  = ajustesStatusValues.reduce((a,b) => a + (b||0), 0);
+
+new Chart(ctxDonut, {
+  type: "doughnut",
+  data: {
+    labels: {{ charts.ajustes_status_labels|tojson }},
+    datasets: [{
+      data: ajustesStatusValues,
+      backgroundColor: ["#f59e0b", "#1565c0", "#16a34a"],
+      borderColor: "#ffffff",
+      borderWidth: 3,
+      hoverOffset: 8
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: "70%",
+    plugins: {
+      legend: {
+        position: "bottom",
+        labels: {
+          color: "#475569",
+          padding: 12,
+          font: { weight: "700", size: 11 }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const v = ctx.parsed || 0;
+            const p = totalAjustesStatus > 0
+              ? ((v / totalAjustesStatus) * 100).toFixed(1)
+              : "0.0";
+            return " " + ctx.label + ": " + fmtNum(v) + " (" + p + "%)";
+          }
+        }
+      }
+    }
+  }
+});
+
+/* ===================================================== */
+/* GRÁFICO 4 — Donut Compras por Status                   */
+/* ===================================================== */
+
+const comprasLabels = {{ charts.compras_labels|tojson }};
+const comprasValues = {{ charts.compras_values|tojson }};
+const totalCompras  = comprasValues.reduce((a,b) => a + (b||0), 0);
+
+const comprasColors = comprasLabels.map(function(label){
+  const v = String(label || "").toLowerCase();
+  if (v.includes("bonificado"))            return "#16a34a";
+  if (v.includes("não") || v.includes("nao")) return "#dc2626";
+  if (v.includes("troca"))                 return "#f59e0b";
+  return "#1565c0";
+});
+
+new Chart(document.getElementById("donutCompras"), {
+  type: "doughnut",
+  data: {
+    labels: comprasLabels,
+    datasets: [{
+      data: comprasValues,
+      backgroundColor: comprasColors,
+      borderColor: "#ffffff",
+      borderWidth: 3,
+      hoverOffset: 8
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: "70%",
+    plugins: {
+      legend: {
+        position: "bottom",
+        labels: {
+          color: "#475569",
+          padding: 12,
+          font: { weight: "700", size: 11 }
+        }
+      },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const v = ctx.parsed || 0;
+            const p = totalCompras > 0
+              ? ((v / totalCompras) * 100).toFixed(1)
+              : "0.0";
+            return " " + ctx.label + ": " + fmtBRL(v) + " (" + p + "%)";
+          }
+        }
+      }
+    }
+  }
+});
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link rel="icon" type="image/png" sizes="32x32"
+      href="{{ url_for('static', filename='favicon.png') }}">
+<link rel="icon" type="image/png" sizes="16x16"
+      href="{{ url_for('static', filename='favicon.png') }}">
+
+<title>{{ title or 'Santa Marta Telhas & Acabamentos' }}</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=static_version) }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+html,body,input,button,select,textarea{font-family:"DM Sans",system-ui,sans-serif !important;}
+
+/* =========================================================================
+   ESTILIZAÇÃO ADICIONAL: SISTEMA DE ALERTA GRAVE INOVADOR
+   ========================================================================= */
+@keyframes pulseBordaCritica {
+    0% { box-shadow: 0 0 15px rgba(255, 0, 0, 0.6); }
+    100% { box-shadow: 0 0 45px rgba(255, 0, 0, 1), 0 0 20px rgba(255, 51, 51, 0.8); background: #1a0000; }
+}
+
+@keyframes flashVermelhoInvasivo {
+    0% { background: rgba(100, 0, 0, 0.96); }
+    100% { background: rgba(160, 0, 0, 0.98); }
+}
+
+/* Sino piscando de forma agressiva em vermelho na topbar */
+.pulse-alert-critical {
+    color: #ff3333 !important;
+    animation: fa-blink 1s ease-in-out infinite alternate !important;
+}
+
+@keyframes fa-blink {
+    0% { opacity: 0.3; transform: scale(0.95); }
+    100% { opacity: 1; transform: scale(1.15); color: #ff0000; }
+}
+
+/* Modificações dinâmicas nos itens graves da listagem clássica do sino */
+.notification-item[data-nivel="grave"] {
+    border-left: 5px solid #ff0000 !important;
+    background-color: #fff2f2 !important;
+}
+.notification-item[data-nivel="grave"] .notification-tag-modulo {
+    background-color: #ff0000 !important;
+    color: #fff !important;
+    font-weight: bold;
+}
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script>
+window.CSRF_TOKEN = "{{ csrf_token() }}";
+(function () {
+  const originalFetch = window.fetch;
+  window.fetch = function (input, init) {
+    init = init || {};
+    const method = (init.method || "GET").toUpperCase();
+    if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+      const headers = new Headers(init.headers || {});
+      if (!headers.has("X-CSRFToken")) {
+        headers.set("X-CSRFToken", window.CSRF_TOKEN);
+      }
+      init.headers = headers;
+    }
+    return originalFetch(input, init);
+  };
+})();
+</script>
+</head>
+
+<body class="{% if session.get('sidebar_collapsed') %}sidebar-collapsed{% endif %}">
+
+<audio id="audioAlertaGrave" src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" preload="auto"></audio>
+
+<div id="modalAlertaCritico" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:99999; color:white; justify-content:center; align-items:center; text-align:center; animation: flashVermelhoInvasivo 0.8s infinite alternate;">
+    <div style="max-width: 650px; width: 90%; padding: 35px; background: #000; border: 4px solid #ff0000; border-radius: 12px; animation: pulseBordaCritica 1s infinite alternate; box-sizing: border-box;">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size: 4rem; color: #ff3333; margin-bottom: 15px;"></i>
+        <h1 style="font-size: 2.5rem; margin: 0 0 10px 0; color: #ff3333; font-weight: 900; letter-spacing: -1px;">ALERTA DE DIVERGÊNCIA CRÍTICA</h1>
+        <h3 style="text-transform: uppercase; letter-spacing: 2px; color: #ffaaaa; font-size: 0.9rem; margin-bottom: 25px;">Ação Obrigatória do Operador Requerida</h3>
+        
+        <div style="background: #111; padding: 20px; border-left: 4px solid #ff3333; text-align: left; margin-bottom: 30px; border-radius: 4px;">
+            <p id="textoAlertaCritico" style="font-size: 1.15rem; margin: 0; line-height: 1.6; color: #fff; font-family: 'DM Mono', monospace;"></p>
+        </div>
+
+        <button id="btnIntervir" style="background: #ff0000; color: white; border: none; padding: 16px 40px; font-size: 1.1rem; font-weight: 800; border-radius: 6px; cursor: pointer; transition: transform 0.2s, background 0.2s; width: 100%; text-transform: uppercase; letter-spacing: 0.5px;" onclick="reconhecerAlertaGrave()">
+            <i class="fa-solid fa-eye" style="margin-right: 8px;"></i> Reconhecer e Intervir Agora
+        </button>
+    </div>
+</div>
+
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="logo" alt="logo">
+    </div>
+
+    <ul class="menu" id="menu-list">
+
+        {% if session.get('tipo') != 'usuario' %}
+        <li>
+            <a href="{{ url_for('dashboard') }}"
+               class="{% if request.endpoint=='dashboard' %}active{% endif %}"
+               title="Dashboards">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Dashboards</span>
+            </a>
+        </li>
+        {% endif %}
+
+        <li>
+            <a href="{{ url_for('listar_chamados') }}"
+               class="{% if request.endpoint=='listar_chamados' %}active{% endif %}"
+               title="Requerimentos">
+                <i class="fa-solid fa-clipboard-list"></i>
+                <span>Requerimentos</span>
+            </a>
+        </li>
+
+        {% if session.get('tipo') in ['admin','comprador'] %}
+        <li>
+            <a href="{{ url_for('acompanhamento_compras') }}"
+               class="{% if request.endpoint=='acompanhamento_compras' %}active{% endif %}"
+               title="Acompanhamento de Compras">
+                <i class="fa-solid fa-truck"></i>
+                <span>Acomp. de Compras</span>
+            </a>
+        </li>
+        {% endif %}
+
+        {% if session.get('tipo') in ['admin','comprador','usuario'] %}
+        <li>
+            <a href="{{ url_for('conferencia') }}"
+               class="{% if request.endpoint=='conferencia' %}active{% endif %}"
+               title="Conferência de Entrada">
+                <i class="fa-solid fa-box-open"></i>
+                <span>Conferência de Entrada</span>
+                <span id="conferenciaBadge" class="menu-badge" style="display: none !important;">0</span>
+            </a>
+        </li>
+        {% endif %}
+
+        <li>
+            <a href="{{ url_for('furo_estoque') }}"
+               class="{% if request.endpoint in ['furo_estoque','novo_furo','ver_furo'] %}active{% endif %}"
+               title="Ajustes de Estoque">
+                <i class="fa-solid fa-boxes-stacked"></i>
+                <span>Ajustes de Estoque</span>
+            </a>
+        </li>
+
+        {% if session.get('tipo') in ['admin','comprador','usuario'] %}
+        <li>
+            <a href="{{ url_for('listar_filiais') }}"
+               class="{% if request.endpoint=='listar_filiais' %}active{% endif %}"
+               title="Filiais">
+                <i class="fa-solid fa-building"></i>
+                <span>Filiais</span>
+            </a>
+        </li>
+
+        <li>
+            <a href="{{ url_for('listar_usuarios') }}"
+               class="{% if request.endpoint=='listar_usuarios' %}active{% endif %}"
+               title="Usuários">
+                <i class="fa-solid fa-users"></i>
+                <span>Usuários</span>
+            </a>
+        </li>
+        {% endif %}
+
+        <li class="menu-separator"></li>
+
+        <li>
+            <a href="{{ url_for('logout') }}" class="menu-logout" title="Sair">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Sair</span>
+            </a>
+        </li>
+
+    </ul>
+</nav>
+
+<header class="topbar">
+
+    <button id="sidebar-toggle" class="btn-toggle" aria-label="Abrir/fechar menu">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+
+    <div class="topbar-right" style="margin-left: auto;">
+        
+        <div class="notification-area" id="notification-area">
+            <div class="bell-wrapper">
+                <i id="notificationBell" class="fa-solid fa-bell notification-bell" aria-hidden="true"></i>
+                <span id="notificationCount" class="notification-badge" aria-hidden="true" style="display: none !important;">0</span>
+            </div>
+            <div id="notificationBox" class="notification-box" aria-live="polite">
+                <div class="notification-header">Central de Alertas e Divergências</div>
+                <div class="notification-list" id="notification-list"></div>
+            </div>
+        </div>
+
+        <div class="user-profile">
+            <div class="user-avatar">
+                {{ session.get('nome', 'U')[0] | upper }}
+            </div>
+            <div class="user-welcome">
+                <span class="user-label">Olá,</span>
+                <span class="user-name">{{ session.get('nome', 'Usuário') }}</span>
+            </div>
+        </div>
+    </div>
+
+</header>
+
+<main class="main">
+    <section class="content">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-container">
+                    {% for c, m in messages %}
+                        <div class="flash {% if c == 'success' %}success{% elif c == 'error' or c == 'danger' %}danger{% else %}{{ c }}{% endif %}">
+                            {% if c == 'success' %}
+                                <i class="fa-solid fa-circle-check"></i>
+                            {% else %}
+                                <i class="fa-solid fa-circle-exclamation"></i>
+                            {% endif %}
+                            <span>{{ m }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+
+    </section>
+</main>
+
+<script>
+const sidebar        = document.getElementById("sidebar");
+const sidebarToggle  = document.getElementById("sidebar-toggle");
+const body           = document.body;
+
+const bell           = document.getElementById('notification-area');
+const box            = document.getElementById('notificationBox');
+const badge          = document.getElementById('notificationCount');
+const listContainer  = document.getElementById('notification-list');
+const confBadge      = document.getElementById('conferenciaBadge');
+
+// Variáveis de controle para o Modal Crítico
+let alertaCriticoAtualId = null;
+let urlDestinoAlertaCritico = "#";
+
+/* ---------------------------------------------------------
+   SIDEBAR — Controle de Estado (LocalStorage)
+   --------------------------------------------------------- */
+if (localStorage.getItem("sidebar-collapsed") === "true") {
+    sidebar.classList.add("collapsed");
+    body.classList.add("sidebar-collapsed");
+}
+
+sidebarToggle.onclick = () => {
+    if (window.innerWidth <= 900) {
+        sidebar.classList.toggle("open");
+    } else {
+        sidebar.classList.toggle("collapsed");
+        body.classList.toggle("sidebar-collapsed");
+        localStorage.setItem("sidebar-collapsed", sidebar.classList.contains("collapsed"));
+    }
+};
+
+document.addEventListener("click", (e) => {
+    if (window.innerWidth <= 900) {
+        if (!sidebar.contains(e.target) && !e.target.closest("#sidebar-toggle")) {
+            sidebar.classList.remove("open");
+        }
+    }
+});
+
+/* ---------------------------------------------------------
+   MOTOR DE IDENTIFICAÇÃO SEMÂNTICA MULTIMÓDULO + DIVERGÊNCIAS
+   Identifica palavras chaves e atribui o layout correspondente
+   --------------------------------------------------------- */
+function descobrirModulo(texto, autor) {
+    const t = (texto || "").toLowerCase();
+    const a = (autor || "").toLowerCase();
+    
+    if (t.includes("divergência") || t.includes("divergente") || t.includes("diferença") || t.includes("erro de preço")) {
+        return "divergencia";
+    }
+    if (t.includes("estoque") || t.includes("mínimo") || t.includes("produto") || t.includes("ajuste") || t.includes("furo")) {
+        return "estoque";
+    }
+    if (t.includes("compra") || t.includes("pedido") || t.includes("fornecedor")) {
+        return "compra";
+    }
+    if (t.includes("nota") || t.includes("fiscal") || t.includes("conferência") || t.includes("entrada") || t.includes("recebimento")) {
+        return "fiscal";
+    }
+    if (t.includes("segurança") || t.includes("bloqueado") || t.includes("urgente") || t.includes("falha") || a.includes("sistema")) {
+        return "seguranca";
+    }
+    return "geral";
+}
+
+/* ---------------------------------------------------------
+   REDIRECIONADOR NATIVO AUTOMÁTICO (Consome url_destino do Banco)
+   --------------------------------------------------------- */
+function executarRedirecionamento(n, modulo) {
+    if (n.url_destino) {
+        window.location.href = n.url_destino;
+        return;
+    }
+    
+    switch(modulo) {
+        case "divergencia":
+        case "compra":
+            window.location.href = "{{ url_for('acompanhamento_compras') }}";
+            break;
+        case "estoque":
+            window.location.href = "{{ url_for('furo_estoque') }}";
+            break;
+        case "fiscal":
+            window.location.href = "{{ url_for('conferencia') }}";
+            break;
+        default:
+            window.location.href = "{{ url_for('dashboard') }}";
+            break;
+    }
+}
+
+/* ---------------------------------------------------------
+   CONSTRUTOR DE CARDS DE NOTIFICAÇÃO DO SINO
+   --------------------------------------------------------- */
+function criarItemNotificacao(n) {
+    const item = document.createElement("div");
+    item.className = `notification-item ${n.lida ? 'read' : 'unread'}`;
+    
+    const modulo = descobrirModulo(n.texto, n.autor_nome);
+    item.setAttribute("data-modulo", modulo);
+    item.setAttribute("data-nivel", n.nivel || "normal");
+
+    let labelExibicao = modulo.toUpperCase();
+    if (labelExibicao === "DIVERGENCIA") labelExibicao = "⚠️ DIVERGÊNCIA";
+    if (labelExibicao === "SEGURANCA") labelExibicao = "SEGURANÇA";
+    if (n.nivel === "grave") labelExibicao = "🚨 CRÍTICO / GRAVE";
+
+    item.innerHTML = `
+        <div class="notification-item-meta-top">
+            <span class="notification-author">${n.autor_nome}</span>
+            <span class="notification-tag-modulo" data-tag="${modulo}">${labelExibicao}</span>
+        </div>
+        <p class="notification-text">${n.texto || ''}</p>
+        <div class="notification-item-meta-bottom">
+            ${n.chamado_id ? `<span class="notification-meta-req"><i class="fa-solid fa-hashtag"></i> Req: ${n.chamado_id}</span>` : ''}
+            <span class="notification-time"><i class="fa-regular fa-clock"></i> ${n.criado_em_formatado}</span>
+        </div>
+    `;
+
+    item.addEventListener('click', (e) => {
+        e.stopPropagation();
+
+        fetch("/api/notificacoes/marcar/" + n.id)
+            .then(() => {
+                item.classList.add('removing');
+
+                setTimeout(() => {
+                    item.remove();
+                    const unreadCount = listContainer.querySelectorAll('.notification-item.unread').length;
+
+                    if (unreadCount === 0) {
+                        badge.style.setProperty("display", "none", "important");
+                        box.classList.remove('visible');
+                    } else {
+                        badge.innerText = unreadCount;
+                    }
+
+                    executarRedirecionamento(n, modulo);
+                }, 220);
+            })
+            .catch(() => {
+                executarRedirecionamento(n, modulo);
+            });
+    });
+
+    return item;
+}
+
+/* ---------------------------------------------------------
+   INTERCEPTADOR DE INTEGRAÇÃO DO MODAL INVASIVO CRÍTICO
+   --------------------------------------------------------- */
+function processarInterceptacaoGravidade(lista) {
+    // Procura na lista por notificações ativas graves e não lidas
+    const itemGraveNaoLido = lista.find(n => n.nivel === "grave" && !n.lida);
+
+    if (itemGraveNaoLido) {
+        // Se encontramos uma e ela ainda não está em exibição na tela
+        if (alertaCriticoAtualId !== itemGraveNaoLido.id) {
+            alertaCriticoAtualId = itemGraveNaoLido.id;
+            urlDestinoAlertaCritico = itemGraveNaoLido.url_destino || "{{ url_for('furo_estoque') }}";
+
+            document.getElementById("textoAlertaCritico").innerText = itemGraveNaoLido.texto;
+            document.getElementById("modalAlertaCritico").style.display = "flex";
+
+            // Ativa sirene em loop contínuo
+            const som = document.getElementById("audioAlertaGrave");
+            som.loop = true;
+            som.play().catch(() => {
+                console.warn("Áudio travado pelo navegador. Aguardando clique na tela.");
+            });
+        }
+    }
+}
+
+function reconhecerAlertaGrave() {
+    if (!alertaCriticoAtualId) return;
+
+    // Remove do banco de dados chamando a API nativa
+    fetch("/api/notificacoes/marcar/" + alertaCriticoAtualId)
+        .then(() => {
+            const som = document.getElementById("audioAlertaGrave");
+            som.pause();
+            som.currentTime = 0;
+
+            document.getElementById("modalAlertaCritico").style.display = "none";
+            window.location.href = urlDestinoAlertaCritico;
+        })
+        .catch(() => {
+            document.getElementById("modalAlertaCritico").style.display = "none";
+            window.location.href = urlDestinoAlertaCritico;
+        });
+}
+
+/* ---------------------------------------------------------
+   CARREGADOR PRINCIPAL DA CENTRAL DE ALERTAS
+   --------------------------------------------------------- */
+function carregarNotificacoes() {
+    fetch("/api/notificacoes")
+        .then(r => r.ok ? r.json() : [])
+        .then(lista => {
+            listContainer.innerHTML = "";
+
+            if (!Array.isArray(lista) || lista.length === 0) {
+                listContainer.innerHTML = '<div class="notification-empty">Nenhum aviso no momento.</div>';
+                badge.style.setProperty("display", "none", "important");
+                document.getElementById("notificationBell").classList.remove("pulse-alert-critical");
+                return;
+            }
+
+            // Envia para o motor de detecção invasiva de alta severidade antes de montar o menu clássico
+            processarInterceptacaoGravidade(lista);
+
+            lista.sort((a, b) => (a.lida === b.lida) ? 0 : (a.lida ? 1 : -1));
+            const naoLidas = lista.filter(n => !n.lida).length;
+
+            if (naoLidas > 0) {
+                badge.innerText = naoLidas;
+                badge.style.setProperty("display", "flex", "important");
+
+                const temDivergencia = lista.some(n => !n.lida && (descobrirModulo(n.texto, n.autor_nome) === "divergencia" || n.nivel === "grave"));
+                if (temDivergencia) {
+                    document.getElementById("notificationBell").classList.add("pulse-alert-critical");
+                } else {
+                    document.getElementById("notificationBell").classList.remove("pulse-alert-critical");
+                }
+            } else {
+                badge.style.setProperty("display", "none", "important");
+                badge.innerText = "0";
+                document.getElementById("notificationBell").classList.remove("pulse-alert-critical");
+            }
+
+            lista.forEach(n => {
+                listContainer.appendChild(criarItemNotificacao(n));
+            });
+        })
+        .catch(() => {
+            listContainer.innerHTML = '<div class="notification-empty">Erro ao sincronizar alertas.</div>';
+            badge.style.setProperty("display", "none", "important");
+        });
+}
+
+/* ---------------------------------------------------------
+   CORREÇÃO DO BADGE DO MENU DA CONFERÊNCIA
+   --------------------------------------------------------- */
+function atualizarConferenciaBadge() {
+    if (!confBadge) return;
+
+    fetch("/api/conferencia/pendentes")
+        .then(r => r.ok ? r.json() : {total: 0})
+        .then(data => {
+            const count = parseInt(data.total || 0);
+
+            if (count > 0) {
+                confBadge.innerText = count;
+                if (!sidebar.classList.contains("collapsed")) {
+                    confBadge.style.setProperty("display", "inline-block", "important");
+                }
+            } else {
+                confBadge.innerText = "0";
+                confBadge.style.setProperty("display", "none", "important");
+            }
+        })
+        .catch(() => {
+            confBadge.style.setProperty("display", "none", "important");
+        });
+}
+
+/* ---------------------------------------------------------
+   CONTROLE CLIQUE DO SINO
+   --------------------------------------------------------- */
+bell.addEventListener('click', (e) => {
+    e.stopPropagation();
+    box.classList.toggle('visible');
+
+    if (box.classList.contains('visible')) {
+        fetch("/api/notificacoes/limpar", { method: "POST" })
+            .then(() => {
+                listContainer.querySelectorAll(".notification-item.unread").forEach(item => {
+                    item.className = "notification-item read";
+                });
+                badge.style.setProperty("display", "none", "important");
+                badge.innerText = "0";
+                document.getElementById("notificationBell").classList.remove("pulse-alert-critical");
+            });
+    }
+});
+
+box.addEventListener('click', (e) => e.stopPropagation());
+
+document.addEventListener('click', () => {
+    box.classList.remove('visible');
+});
+
+/* ---------------------------------------------------------
+   INTERVALOS DE EXECUÇÃO ATIVA (Tempo real - 15 segundos)
+   --------------------------------------------------------- */
+carregarNotificacoes();
+setInterval(carregarNotificacoes, 15000);
+
+atualizarConferenciaBadge();
+setInterval(atualizarConferenciaBadge, 15000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,30 @@
+<style>html,body,input,button,select,textarea{font-family:"DM Sans",system-ui,sans-serif !important;}</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+{% extends 'layout.html' %}
+{% block content %}
+<div class="card">
+  <h3>Novo Usuário</h3>
+  <form method="POST" action="{{ url_for('novo_usuario') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <input name="nome" class="input" placeholder="Nome" required>
+    <input name="usuario" class="input" placeholder="Login" required>
+    <input name="email" class="input" placeholder="E-mail  (opcional)">
+    <input name="senha" class="input" placeholder="Senha" required>
+    <select name="tipo" class="input">
+      <option value="usuario">Usuário</option>
+      <option value="comprador">Comprador</option>
+      <option value="admin">Admin</option>
+    </select>
+    <select name="filial_id" class="input" required>
+      <option value="" disabled selected>Selecione uma filial</option>
+      {% for f in filiais %}
+      <option value="{{ f.id }}">{{ f.nome }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn-primary" type="submit">Salvar</button>
+  </form>
+</div>
+{% endblock %}
