@@ -1119,7 +1119,6 @@ def dashboard():
         # Tenta pegar do 'stats' ou cria um dicionário vazio seguro para o Jinja2 não travar
         ajuste_status_counts=stats.get('ajuste_status_counts', stats.get('status_counts', {})) if isinstance(stats, dict) else {}
     )
-
 # ----------------------------
 # IMPORTAÇÃO: XLSX -> produtos
 # ----------------------------
