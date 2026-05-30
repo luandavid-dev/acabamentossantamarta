@@ -4323,6 +4323,11 @@ def inject_security_helpers():
 
 @app.before_request
 def enforce_csrf_protection():
+    # --- ADICIONE ESTA EXCEÇÃO EXATAMENTE AQUI ---
+    # Se a requisição for para a API de sincronização, pula toda a validação de CSRF
+    if request.path == "/api/pedidos/sincronizar":
+        return None  # Permite que a requisição siga direto para a rota do integrador
+
     if request.method in ("GET", "HEAD", "OPTIONS"):
         return None
     if request.endpoint == "static":
