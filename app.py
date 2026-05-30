@@ -4374,7 +4374,7 @@ def api_conferencia_pendentes():
 
 # --- COPIE E SUBSTITUA A ROTA INTEIRA NO SEU APP.PY ---
 
-API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "ChaveSuperSecretaDoIntegrador123!")
+API_SYNC_TOKEN = "8f3b29c1e4d5f6a7b8c9d0e1f2a3b4c5d6e7f8a"
 
 @app.route("/api/pedidos/sincronizar", methods=["POST", "PUT"])
 def api_sincronizar_pedidos():
