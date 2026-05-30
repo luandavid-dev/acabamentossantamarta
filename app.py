@@ -1,17 +1,20 @@
-# app.py
 import pytz
 import os
 import secrets
+import hmac  # Garanta que o hmac também está importado para o CSRF
+
 try:
     from dotenv import load_dotenv
-    # Garante que o .env seja buscado no diretório do script
     dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
     if os.path.exists(dotenv_path):
         load_dotenv(dotenv_path)
     else:
-        load_dotenv() # Fallback para comportamento padrão
+        load_dotenv() 
 except ImportError:
     pass
+
+# COLOQUE A DEFINIÇÃO DO TOKEN AQUI (Logo após os imports e o dotenv)
+API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "8f3b29c1e4d5f6a7b8c9d0e1f2a3b4c5d6e7f8a")
 import hmac
 import sqlite3
 try:
