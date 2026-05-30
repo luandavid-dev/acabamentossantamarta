@@ -3713,10 +3713,13 @@ def get_erp_connection():
 # ROTA LISTAGEM DE PEDIDOS
 # =========================================================
 
+# =========================================================
+# ROTA LISTAGEM DE PEDIDOS (LENDO DO BANCO EMBUTIDO SQLITE)
+# =========================================================
+
 @app.route("/conferencia")
 @login_required
 def conferencia():
-
     from datetime import datetime, timedelta
 
     user_tipo = session.get("tipo")
@@ -3734,7 +3737,6 @@ def conferencia():
     previsao_inicio = request.args.get("previsao_inicio")
     previsao_fim = request.args.get("previsao_fim")
 
-    # 🔥 NOVO: filtro rápido
     filtro_rapido = request.args.get("previsao_rapida")
 
     hoje = datetime.today().date()
@@ -3743,20 +3745,16 @@ def conferencia():
         data_fim = hoje.strftime('%Y-%m-%d')
         data_inicio = (hoje - timedelta(days=30)).strftime('%Y-%m-%d')
 
-    # 🔥 aplica filtros rápidos
     if filtro_rapido == "hoje":
         previsao_inicio = previsao_fim = hoje.strftime('%Y-%m-%d')
-
     elif filtro_rapido == "amanha":
         amanha = hoje + timedelta(days=1)
         previsao_inicio = previsao_fim = amanha.strftime('%Y-%m-%d')
-
     elif filtro_rapido == "semana":
-        inicio_semana = hoje
-        fim_semana = hoje + timedelta(days=7)
-        previsao_inicio = inicio_semana.strftime('%Y-%m-%d')
-        previsao_fim = fim_semana.strftime('%Y-%m-%d')
+        previsao_inicio = hoje.strftime('%Y-%m-%d')
+        previsao_fim = (hoje + timedelta(days=7)).strftime('%Y-%m-%d')
 
+    # Define a ordenação do SQLite
     order_by = "DATA_PEDIDO DESC"
     if sort == "pedido_desc":
         order_by = "NUMPED DESC"
@@ -3765,68 +3763,17 @@ def conferencia():
     elif sort == "data_asc":
         order_by = "DATA_PEDIDO ASC"
     elif sort == "previsao_asc":
-        order_by = "P.DTPREVREC ASC"
+        order_by = "DTPREVREC ASC"
     elif sort == "previsao_desc":
-        order_by = "P.DTPREVREC DESC"
+        order_by = "DTPREVREC DESC"
 
     pedidos_com_status = []
 
     try:
-        with get_erp_connection() as erp_conn:
-            cursor = erp_conn.cursor()
-
-            query = """
-                SELECT DISTINCT 
-                    V.NUMPED, 
-                    V.DATA_PEDIDO, 
-                    V.FORNECEDOR,
-                    P.DTPREVREC
-                FROM _VISAO_CARGA_PEDIDO_COMPRA V
-                LEFT JOIN PEDIFORCAD P 
-                    ON P.NUMPED = V.NUMPED
-                WHERE 1=1
-            """
-
-            params = []
-
-            query += " AND CAST(V.DATA_PEDIDO AS DATE) BETWEEN ? AND ?"
-            params.extend([data_inicio, data_fim])
-
-            # 🔥 PREVISÃO ENTREGA
-            if previsao_inicio and previsao_fim:
-                query += " AND CAST(P.DTPREVREC AS DATE) BETWEEN ? AND ?"
-                params.extend([previsao_inicio, previsao_fim])
-
-            # 🔥 atrasados
-            if filtro_rapido == "atrasados":
-                query += " AND CAST(P.DTPREVREC AS DATE) < ?"
-                params.append(hoje.strftime('%Y-%m-%d'))
-
-            if pedido:
-                query += " AND V.NUMPED = ?"
-                params.append(pedido)
-
-            if fornecedor:
-                query += " AND LOWER(V.FORNECEDOR) LIKE ?"
-                params.append(f"%{fornecedor}%")
-
-            if produto:
-                query += """
-                    AND (
-                        CAST(V.CODPRO AS VARCHAR) LIKE ?
-                        OR UPPER(V.PRODUTO) LIKE UPPER(?)
-                    )
-                """
-                like = f"%{produto}%"
-                params.extend([like, like])
-
-            query += f" ORDER BY {order_by}"
-
-            cursor.execute(query, params)
-            pedidos = cursor.fetchall()
-
+        # CONEXÃO ALTERADA: Agora lê do banco local SQLite do Render de forma ultrarápida
         with get_db_connection() as conn:
-
+            
+            # 1. Mapeamentos locais que você já usava
             status_map = {
                 r["numped"]: r["status"]
                 for r in conn.execute("SELECT numped, status FROM status_conferencia")
@@ -3850,39 +3797,78 @@ def conferencia():
                 """)
             }
 
-        for p in pedidos:
+            # 2. Busca os dados da tabela sincronizada pelo integrador
+            query = """
+                SELECT NUMPED, DATA_PEDIDO, FORNECEDOR, DTPREVREC 
+                FROM pedidos_erp 
+                WHERE 1=1
+            """
+            params = []
 
-            status_atual = status_map.get(p.NUMPED, STATUS_PENDENTE)
-            data_chegada = chegada_map.get(p.NUMPED)
-            usuario_conf = usuario_map.get(p.NUMPED)
+            # Filtros de data adaptados para o formato texto do SQLite
+            query += " AND date(DATA_PEDIDO) BETWEEN date(?) AND date(?)"
+            params.extend([data_inicio, data_fim])
 
-            if status_filtro and status_atual != status_filtro:
-                continue
+            if previsao_inicio and previsao_fim:
+                query += " AND date(DTPREVREC) BETWEEN date(?) AND date(?)"
+                params.extend([previsao_inicio, previsao_fim])
 
-            previsao_data = p.DTPREVREC
+            if filtro_rapido == "atrasados":
+                query += " AND date(DTPREVREC) < date(?)"
+                params.append(hoje.strftime('%Y-%m-%d'))
 
-            atrasado = False
-            if previsao_data:
-                try:
-                    atrasado = previsao_data.date() < hoje
-                except:
-                    pass
+            if pedido:
+                query += " AND NUMPED = ?"
+                params.append(pedido)
 
-            pedidos_com_status.append({
-                "NUMPED": p.NUMPED,
-                "DATA_PEDIDO": p.DATA_PEDIDO.strftime("%d/%m/%Y"),
-                "FORNECEDOR": p.FORNECEDOR,
-                "PREVISAO_ENTREGA": previsao_data.strftime("%d/%m/%Y") if previsao_data else None,
-                "ATRASADO": atrasado,
-                "STATUS": status_atual,
-                "DATA_CHEGADA": datetime.strptime(
-                    data_chegada, "%Y-%m-%d"
-                ).strftime("%d/%m/%Y") if data_chegada else None,
-                "USUARIO_CONFERENCIA": usuario_conf if usuario_conf else "-"
-            })
+            if fornecedor:
+                query += " AND LOWER(FORNECEDOR) LIKE ?"
+                params.append(f"%{fornecedor}%")
+
+            query += f" ORDER BY {order_by}"
+            
+            pedidos_locais = conn.execute(query, params).fetchall()
+
+            for p in pedidos_locais:
+                numped_int = int(p["NUMPED"]) if p["NUMPED"].isdigit() else p["NUMPED"]
+                status_atual = status_map.get(numped_int, STATUS_PENDENTE)
+                data_chegada = chegada_map.get(numped_int)
+                usuario_conf = usuario_map.get(numped_int)
+
+                if status_filtro and status_atual != status_filtro:
+                    continue
+
+                # Processamento de datas para exibição em tela (padrão brasileiro)
+                data_pedido_str = "-"
+                if p["DATA_PEDIDO"]:
+                    try:
+                        data_pedido_str = datetime.strptime(p["DATA_PEDIDO"].split(".")[0].split(" ")[0], "%Y-%m-%d").strftime("%d/%m/%Y")
+                    except:
+                        data_pedido_str = p["DATA_PEDIDO"]
+
+                previsao_entrega_str = None
+                atrasado = False
+                if p["DTPREVREC"]:
+                    try:
+                        dt_prev = datetime.strptime(p["DTPREVREC"].split(".")[0].split(" ")[0], "%Y-%m-%d")
+                        previsao_entrega_str = dt_prev.strftime("%d/%m/%Y")
+                        atrasado = dt_prev.date() < hoje
+                    except:
+                        previsao_entrega_str = p["DTPREVREC"]
+
+                pedidos_com_status.append({
+                    "NUMPED": p["NUMPED"],
+                    "DATA_PEDIDO": data_pedido_str,
+                    "FORNECEDOR": p["FORNECEDOR"],
+                    "PREVISAO_ENTREGA": previsao_entrega_str,
+                    "ATRASADO": atrasado,
+                    "STATUS": status_atual,
+                    "DATA_CHEGADA": datetime.strptime(data_chegada, "%Y-%m-%d").strftime("%d/%m/%Y") if data_chegada else None,
+                    "USUARIO_CONFERENCIA": usuario_conf if usuario_conf else "-"
+                })
 
     except Exception as e:
-        flash(f"Erro ao carregar pedidos: {e}", "danger")
+        flash(f"Erro ao carregar pedidos locais: {e}", "danger")
 
     return render_template(
         "conferencia.html",
@@ -3952,10 +3938,13 @@ def salvar_status():
 
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 
+# =========================================================
+# CONFERÊNCIA DE ITENS DO PEDIDO (LENDO DO SQLITE LOCAL)
+# =========================================================
+
 @app.route("/conferencia/<int:num_pedido>", methods=["GET", "POST"])
 @login_required
 def conferencia_itens(num_pedido):
-
     user_tipo = session.get("tipo")
     usuario = session.get("nome", "desconhecido")
     autor_id = session.get("user_id", 0)
@@ -3964,332 +3953,123 @@ def conferencia_itens(num_pedido):
         flash("Acesso não autorizado.", "warning")
         return redirect(url_for("login"))
 
-    # ================= ERP =================
+    itens = []
+    # Busca itens salvos localmente
     try:
-
-        with get_erp_connection() as erp_conn:
-
-            cursor = erp_conn.cursor()
-
-            cursor.execute("""
-                SELECT 
-                    CODPRO,
-                    PRODUTO,
-                    QTDE,
-                    TOTAL_PRECO_FINAL
-                FROM _VISAO_CARGA_PEDIDO_COMPRA
-                WHERE NUMPED = ?
+        with get_db_connection() as conn:
+            cursor = conn.execute("""
+                SELECT CODPRO, PRODUTO, QTDE, TOTAL_PRECO_FINAL 
+                FROM itens_pedido_erp 
+                WHERE NUMPED = ? 
                 ORDER BY CODPRO
-            """, (num_pedido,))
-
-            itens = [
-                dict(zip([c[0] for c in cursor.description], r))
-                for r in cursor.fetchall()
-            ]
-
+            """, (str(num_pedido),))
+            itens = [dict(r) for r in cursor.fetchall()]
     except Exception as e:
-
-        flash(f"Erro ERP: {e}", "danger")
         itens = []
 
-    # ================= POST =================
-    if request.method == "POST":
-
+    # Se a tabela ainda estiver vazia, tenta uma conexão direta rápida ao ERP ou exibe aviso
+    if not itens:
         try:
+            with get_erp_connection() as erp_conn:
+                cursor = erp_conn.cursor()
+                cursor.execute("""
+                    SELECT CODPRO, PRODUTO, QTDE, TOTAL_PRECO_FINAL 
+                    FROM _VISAO_CARGA_PEDIDO_COMPRA 
+                    WHERE NUMPED = ? ORDER BY CODPRO
+                """, (num_pedido,))
+                itens = [dict(zip([c[0] for c in cursor.description], r)) for r in cursor.fetchall()]
+                
+                # Faz cache local automático dos itens para nunca mais dar timeout
+                with get_db_connection() as conn:
+                    conn.execute("CREATE TABLE IF NOT EXISTS itens_pedido_erp (NUMPED TEXT, CODPRO TEXT, PRODUTO TEXT, QTDE REAL, TOTAL_PRECO_FINAL REAL)")
+                    for it in itens:
+                        conn.execute("INSERT INTO itens_pedido_erp VALUES (?, ?, ?, ?, ?)", 
+                                     (str(num_pedido), str(it["CODPRO"]), it["PRODUTO"], it["QTDE"], it["TOTAL_PRECO_FINAL"]))
+                    conn.commit()
+        except Exception as e:
+            flash(f"Aviso: Não foi possível conectar ao banco da empresa para detalhar itens em tempo real ({e}). Certifique-se de que o integrador local sincronizou os itens.", "warning")
 
+    # ================= POST (SALVAMENTO DA CONFERÊNCIA) =================
+    if request.method == "POST":
+        try:
             with get_db_connection() as conn:
-
-                # =====================================================
-                # SALVAR ITENS
-                # =====================================================
-
                 for item in itens:
-
                     codpro = item["CODPRO"]
-
                     qtd = request.form.get(f"qtd_{codpro}")
                     tonalidade = request.form.get(f"tonalidade_{codpro}")
                     enderecamento = request.form.get(f"enderecamento_{codpro}")
                     data_chegada = request.form.get(f"data_chegada_{codpro}")
-
                     lote = request.form.get(f"lote_{codpro}")
                     peso = request.form.get(f"peso_{codpro}")
                     pei = request.form.get(f"pei_{codpro}")
                     area_m2 = request.form.get(f"area_m2_{codpro}")
 
-                    qtd_final = (
-                        float(qtd.replace(",", "."))
-                        if qtd else None
-                    )
+                    qtd_final = float(qtd.replace(",", ".")) if qtd else None
 
-                    if any([
-                        qtd_final,
-                        tonalidade,
-                        enderecamento,
-                        data_chegada,
-                        lote,
-                        peso,
-                        pei,
-                        area_m2
-                    ]):
-
+                    if any([qtd_final, tonalidade, enderecamento, data_chegada, lote, peso, pei, area_m2]):
+                        conn.execute("DELETE FROM conferencias WHERE numped = ? AND codpro = ?", (num_pedido, str(codpro)))
                         conn.execute("""
-                            DELETE FROM conferencias
-                            WHERE numped = ?
-                            AND codpro = ?
-                        """, (
-                            num_pedido,
-                            codpro
-                        ))
+                            INSERT INTO conferencias (numped, codpro, qtd_contada, usuario, tonalidade_bitola, enderecamento, data_chegada, lote, peso, pei, area_m2)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (num_pedido, str(codpro), qtd_final, usuario, tonalidade, enderecamento, data_chegada, lote, peso, pei, area_m2))
 
-                        conn.execute("""
-                            INSERT INTO conferencias (
-                                numped,
-                                codpro,
-                                qtd_contada,
-                                usuario,
-                                tonalidade_bitola,
-                                enderecamento,
-                                data_chegada,
-                                lote,
-                                peso,
-                                pei,
-                                area_m2
-                            )
-                            VALUES (
-                                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-                            )
-                        """, (
-                            num_pedido,
-                            codpro,
-                            qtd_final,
-                            usuario,
-                            tonalidade,
-                            enderecamento,
-                            data_chegada,
-                            lote,
-                            peso,
-                            pei,
-                            area_m2
-                        ))
-
-                # =====================================================
-                # MENSAGEM / ANEXOS
-                # =====================================================
-
-                comentario = request.form.get(
-                    "comentario_pedido",
-                    ""
-                ).strip()
-
+                # Mensagens e comentários
+                comentario = request.form.get("comentario_pedido", "").strip()
                 arquivos = request.files.getlist("anexos")
-
-                tem_anexo = any(
-                    f and f.filename
-                    for f in arquivos
-                )
-
+                tem_anexo = any(f and f.filename for f in arquivos)
                 mensagem_id = None
 
-                # cria mensagem mesmo sem comentário
                 if comentario or tem_anexo:
-
-                    cursor = conn.execute("""
-                        INSERT INTO mensagens (
-                            chamado_id,
-                            texto,
-                            autor_nome,
-                            autor_id,
-                            autor_tipo
-                        )
-                        VALUES (?, ?, ?, ?, ?)
-                    """, (
-                        num_pedido,
-                        comentario if comentario else "",
-                        usuario,
-                        autor_id,
-                        user_tipo
-                    ))
-
-                    mensagem_id = cursor.lastrowid
-
-                # =====================================================
-                # SALVAR ANEXOS
-                # =====================================================
+                    c = conn.execute("INSERT INTO mensagens (chamado_id, texto, autor_nome, autor_id, autor_tipo) VALUES (?, ?, ?, ?, ?)",
+                                     (num_pedido, comentario, usuario, autor_id, user_tipo))
+                    mensagem_id = c.lastrowid
 
                 if tem_anexo:
-
-                    os.makedirs(
-                        UPLOAD_FOLDER,
-                        exist_ok=True
-                    )
-
+                    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
                     for f in arquivos:
-
                         if f and f.filename:
-
-                            if not allowed_file(f.filename):
-                                flash("Anexo ignorado por extensão não permitida.", "warning")
-                                continue
-
-                            nome_original = secure_filename(
-                                f.filename
-                            )
-                            nome_seguro = safe_unique_filename(nome_original, "conf")
-
-                            caminho = os.path.join(
-                                UPLOAD_FOLDER,
-                                nome_seguro
-                            )
-
-                            f.save(caminho)
-
-                            conn.execute("""
-                                INSERT INTO anexos (
-                                    chamado_id,
-                                    mensagem_id,
-                                    filename,
-                                    filepath
-                                )
-                                VALUES (?, ?, ?, ?)
-                            """, (
-                                num_pedido,
-                                mensagem_id,
-                                nome_seguro,
-                                nome_seguro
-                            ))
-
+                            if not allowed_file(f.filename): continue
+                            nome_seguro = safe_unique_filename(secure_filename(f.filename), "conf")
+                            f.save(os.path.join(UPLOAD_FOLDER, nome_seguro))
+                            conn.execute("INSERT INTO anexos (chamado_id, mensagem_id, filename, filepath) VALUES (?, ?, ?, ?)",
+                                         (num_pedido, mensagem_id, nome_seguro, nome_seguro))
                 conn.commit()
-
-            flash(
-                "Pedido atualizado com sucesso!",
-                "success"
-            )
-
+            flash("Pedido atualizado com sucesso!", "success")
         except Exception as e:
+            flash(f"Erro ao salvar: {e}", "danger")
+            
+        return redirect(url_for("conferencia_itens", num_pedido=num_pedido))
 
-            flash(
-                f"Erro ao salvar: {e}",
-                "danger"
-            )
-
-        return redirect(
-            url_for(
-                "conferencia_itens",
-                num_pedido=num_pedido
-            )
-        )
-
-    # ================= BANCO LOCAL =================
-
+    # ================= CARGA DE DADOS DO BANCO LOCAL =================
     with get_db_connection() as conn:
-
-        qtd_dict = {
-
-            r["codpro"]: dict(r)
-
-            for r in conn.execute("""
-
-                SELECT
-                    codpro,
-                    qtd_contada,
-                    tonalidade_bitola,
-                    enderecamento,
-                    data_chegada,
-                    lote,
-                    peso,
-                    pei,
-                    area_m2
-
-                FROM conferencias
-
-                WHERE numped = ?
-
-            """, (num_pedido,))
-        }
-
+        qtd_dict = {str(r["codpro"]): dict(r) for r in conn.execute("SELECT * FROM conferencias WHERE numped = ?", (num_pedido,))}
         mensagens_raw = conn.execute("""
-
-            SELECT
-                m.id,
-                m.texto,
-                m.autor_nome,
-                m.autor_tipo,
-                m.data,
-                a.filename,
-                a.filepath
-
-            FROM mensagens m
-
-            LEFT JOIN anexos a
-                ON a.mensagem_id = m.id
-
-            WHERE m.chamado_id = ?
-
-            ORDER BY m.data ASC
-
+            SELECT m.id, m.texto, m.autor_nome, m.autor_tipo, m.data, a.filename, a.filepath
+            FROM mensagens m LEFT JOIN anexos a ON a.mensagem_id = m.id
+            WHERE m.chamado_id = ? ORDER BY m.data ASC
         """, (num_pedido,)).fetchall()
 
-    # ================= AGRUPAR MENSAGENS =================
-
     tz_brasilia = pytz.timezone("America/Sao_Paulo")
-
     mensagens_dict = {}
-
     for m in mensagens_raw:
-
         msg_id = m["id"]
-
         if msg_id not in mensagens_dict:
-
             data_fmt = m["data"]
-
             try:
-
-                dt = datetime.strptime(
-                    m["data"],
-                    "%Y-%m-%d %H:%M:%S"
-                )
-
-                dt = dt.replace(tzinfo=pytz.UTC)
-
-                data_fmt = dt.astimezone(
-                    tz_brasilia
-                ).strftime("%d/%m/%Y %H:%M")
-
-            except:
-                pass
-
-            mensagens_dict[msg_id] = {
-                "texto": m["texto"],
-                "autor_nome": m["autor_nome"],
-                "autor_tipo": m["autor_tipo"],
-                "data": data_fmt,
-                "anexos": []
-            }
-
+                dt = datetime.strptime(m["data"], "%Y-%m-%d %H:%M:%S").replace(tzinfo=pytz.UTC)
+                data_fmt = dt.astimezone(tz_brasilia).strftime("%d/%m/%Y %H:%M")
+            except: pass
+            mensagens_dict[msg_id] = {"texto": m["texto"], "autor_nome": m["autor_nome"], "autor_tipo": m["autor_tipo"], "data": data_fmt, "anexos": []}
         if m["filename"]:
+            mensagens_dict[msg_id]["anexos"].append({"filename": m["filename"], "filepath": m["filepath"]})
 
-            mensagens_dict[msg_id]["anexos"].append({
-                "filename": m["filename"],
-                "filepath": m["filepath"]
-            })
-
-    mensagens = list(mensagens_dict.values())
-
-    # ================= TOTAL PEDIDO =================
-
-    total_pedido = sum(
-        Decimal(str(i["TOTAL_PRECO_FINAL"]))
-        for i in itens
-        if i["TOTAL_PRECO_FINAL"]
-    )
+    total_pedido = sum(Decimal(str(i["TOTAL_PRECO_FINAL"])) for i in itens if i["TOTAL_PRECO_FINAL"])
 
     return render_template(
         "conferencia_itens.html",
         num_pedido=num_pedido,
         itens=itens,
-        mensagens=mensagens,
+        mensagens=list(mensagens_dict.values()),
         qtd_dict=qtd_dict,
         user_tipo=user_tipo,
         total_pedido=total_pedido
