@@ -3683,6 +3683,36 @@ def init_conferencias():
 init_status_conferencia()
 init_conferencias()
 
+def init_pedidos_erp():
+    conn = get_db_connection()
+    # Garante a criação da tabela de cabeçalho dos pedidos
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS pedidos_erp (
+            NUMPED TEXT PRIMARY KEY,
+            DATA_PEDIDO TEXT,
+            FORNECEDOR TEXT,
+            DTPREVREC TEXT
+        )
+    """)
+    # Garante a criação da tabela de itens dos pedidos
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS itens_pedido_erp (
+            NUMPED TEXT,
+            CODPRO TEXT,
+            PRODUTO TEXT,
+            QTDE REAL,
+            TOTAL_PRECO_FINAL REAL,
+            PRIMARY KEY (NUMPED, CODPRO)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# --- CHAME A NOVA FUNÇÃO JUNTO COM AS OUTRAS ---
+init_status_conferencia()
+init_conferencias()
+init_pedidos_erp()  # <--- Adicione esta linha aqui
+
 # =========================================================
 # CONEXÃO ERP
 # =========================================================
