@@ -355,18 +355,15 @@ def _extrair_quantidade_do_titulo(titulo: str) -> str:
 @app.route("/dashboard")
 @login_required
 def dashboard():
-
     from flask import session, redirect, url_for, request, render_template
+    from datetime import datetime
     import re
+    import sqlite3
 
     if session.get("tipo") != "admin":
-
-        return redirect(
-            url_for("listar_chamados")
-        )
+        return redirect(url_for("listar_chamados"))
 
     conn = get_db_connection()
-
     conn.row_factory = sqlite3.Row
 
     filtros = {
@@ -379,51 +376,27 @@ def dashboard():
     }
 
     def numero(valor):
-
         try:
             return float(valor or 0)
         except:
             return 0
 
     def formatar_brl(valor):
-
         try:
             texto = f"{float(valor or 0):,.2f}"
-
-            return (
-                texto
-                .replace(",", "X")
-                .replace(".", ",")
-                .replace("X", ".")
-            )
-
+            return texto.replace(",", "X").replace(".", ",").replace("X", ".")
         except:
             return "0,00"
 
     def obter_colunas(tabela):
-
         try:
-
-            rows = conn.execute(f"""
-                PRAGMA table_info({tabela})
-            """).fetchall()
-
-            return {
-                row["name"]
-                for row in rows
-            }
-
+            rows = conn.execute(f"PRAGMA table_info({tabela})").fetchall()
+            return {row["name"] for row in rows}
         except:
             return set()
 
     def normalizar_status_ajuste(status):
-
-        status = (
-            str(status or "")
-            .strip()
-            .upper()
-        )
-
+        status = str(status or "").strip().upper()
         mapa = {
             "": "ABERTO",
             "ABERTO": "ABERTO",
@@ -434,678 +407,267 @@ def dashboard():
             "CONCLUIDO": "FINALIZADO",
             "CONCLUÍDO": "FINALIZADO",
         }
-
-        return mapa.get(
-            status,
-            status or "ABERTO"
-        )
+        return mapa.get(status, status or "ABERTO")
 
     def extrair_quantidade_unidade(titulo):
-
         titulo = str(titulo or "").strip()
-
-        match = re.search(
-            r"(\d+[.,]?\d*)\s*(UN|m²|M2|P[Cc])?$",
-            titulo
-        )
-
+        match = re.search(r"(\d+[.,]?\d*)\s*(UN|m²|M2|P[Cc])?$", titulo)
         if match:
-
             try:
-
-                return (
-                    float(match.group(1).replace(",", ".")),
-                    match.group(2) or "UN"
-                )
-
+                return float(match.group(1).replace(",", ".")), match.group(2) or "UN"
             except:
                 return 1, "UN"
-
         return 1, "UN"
 
     # =====================================================
     # REQUERIMENTOS / CHAMADOS
     # =====================================================
-
     chamados_where = []
     chamados_params = []
 
     if filtros["status"]:
-
         chamados_where.append("c.status = ?")
         chamados_params.append(filtros["status"])
 
     if filtros["produto"]:
-
         chamados_where.append("c.titulo LIKE ?")
         chamados_params.append(f"%{filtros['produto']}%")
 
     if filtros["inicio"]:
-
         chamados_where.append("date(c.data_abertura) >= date(?)")
         chamados_params.append(filtros["inicio"])
 
     if filtros["fim"]:
-
         chamados_where.append("date(c.data_abertura) <= date(?)")
         chamados_params.append(filtros["fim"])
 
-    chamados_where_sql = (
-        "WHERE " + " AND ".join(chamados_where)
-        if chamados_where
-        else ""
-    )
+    chamados_where_sql = "WHERE " + " AND ".join(chamados_where) if chamados_where else ""
 
     chamados_rows = conn.execute(f"""
-
         SELECT
             c.titulo AS produto,
             c.status,
             CASE
-                WHEN c.prioridade IN (
-                    'Quebras na Entrega',
-                    'Defeito de Fábrica',
-                    'Avarias de Pátio'
-                ) THEN c.prioridade
+                WHEN c.prioridade IN ('Quebras na Entrega', 'Defeito de Fábrica', 'Avarias de Pátio') THEN c.prioridade
                 ELSE 'Outros'
             END AS classificacao
-
         FROM chamados c
-
         {chamados_where_sql}
-
     """, chamados_params).fetchall()
 
     total_chamados = 0
-
-    status_counts = {
-        "Aberto": 0,
-        "Concluído": 0,
-        "Em Andamento": 0
-    }
-
+    status_counts = {"Aberto": 0, "Concluído": 0, "Em Andamento": 0}
     chamados_produto_classificacao = {}
 
     for row in chamados_rows:
-
         total_chamados += 1
-
         status_nome = row["status"] or "Sem Status"
+        status_counts[status_nome] = status_counts.get(status_nome, 0) + 1
 
-        status_counts[status_nome] = (
-            status_counts.get(status_nome, 0)
-            + 1
-        )
-
-        titulo_limpo = re.sub(
-            r"\s*-\s*\d+[.,]?\d*\s*(UN|m²|M2|P[Cc])?$",
-            "",
-            row["produto"] or ""
-        ).strip()
-
-        qtd, unidade = extrair_quantidade_unidade(
-            row["produto"]
-        )
-
-        key = (
-            titulo_limpo or "Sem produto",
-            row["classificacao"] or "Outros",
-            unidade
-        )
-
-        chamados_produto_classificacao[key] = (
-            chamados_produto_classificacao.get(key, 0)
-            + qtd
-        )
+        titulo_limpo = re.sub(r"\s*-\s*\d+[.,]?\d*\s*(UN|m²|M2|P[Cc])?$", "", row["produto"] or "").strip()
+        qtd, unidade = extrair_quantidade_unidade(row["produto"])
+        key = (titulo_limpo or "Sem produto", row["classificacao"] or "Outros", unidade)
+        chamados_produto_classificacao[key] = chamados_produto_classificacao.get(key, 0) + qtd
 
     chamados_produto_classificacao_list = [
-
-        {
-            "produto": key[0],
-            "classificacao": key[1],
-            "total": round(valor, 2),
-            "unidade": key[2],
-        }
-
-        for key, valor in chamados_produto_classificacao.items()
-
+        {"produto": k[0], "classificacao": k[1], "total": round(v, 2), "unidade": k[2]}
+        for k, v in chamados_produto_classificacao.items()
     ]
-
-    chamados_produto_classificacao_list.sort(
-        key=lambda item: item["total"],
-        reverse=True
-    )
-
-    percentual_chamados_abertos = (
-        round(
-            (
-                status_counts.get("Aberto", 0)
-                / total_chamados
-            ) * 100,
-            1
-        )
-        if total_chamados
-        else 0
-    )
+    chamados_produto_classificacao_list.sort(key=lambda item: item["total"], reverse=True)
 
     # =====================================================
     # AJUSTES DE ESTOQUE
     # =====================================================
-
     furo_colunas = obter_colunas("furo_estoque")
-
     desc_partes = []
-
-    if "descricao" in furo_colunas:
-        desc_partes.append("NULLIF(f.descricao,'')")
-
-    if "produto" in furo_colunas:
-        desc_partes.append("NULLIF(f.produto,'')")
-
-    descricao_expr = (
-        "COALESCE("
-        + ", ".join(desc_partes)
-        + ", 'SEM DESCRIÇÃO')"
-        if desc_partes
-        else "'SEM DESCRIÇÃO'"
-    )
-
-    codpro_expr = (
-        "COALESCE(NULLIF(f.codpro,''), '-')"
-        if "codpro" in furo_colunas
-        else "'-'"
-    )
-
-    status_expr = (
-        "COALESCE(NULLIF(f.status,''), 'ABERTO')"
-        if "status" in furo_colunas
-        else "'ABERTO'"
-    )
-
-    filial_expr = (
-        "COALESCE(NULLIF(f.filial,''), 'NÃO INFORMADA')"
-        if "filial" in furo_colunas
-        else "'NÃO INFORMADA'"
-    )
-
-    patio_expr = (
-        "COALESCE(NULLIF(f.patio,''), 'NÃO INFORMADO')"
-        if "patio" in furo_colunas
-        else "'NÃO INFORMADO'"
-    )
+    if "descricao" in furo_colunas: desc_partes.append("NULLIF(f.descricao,'')")
+    if "produto" in furo_colunas: desc_partes.append("NULLIF(f.produto,'')")
+    descricao_expr = "COALESCE(" + ", ".join(desc_partes) + ", 'SEM DESCRIÇÃO')" if desc_partes else "'SEM DESCRIÇÃO'"
+    codpro_expr = "COALESCE(NULLIF(f.codpro,''), '-')" if "codpro" in furo_colunas else "'-'"
+    status_expr = "COALESCE(NULLIF(f.status,''), 'ABERTO')" if "status" in furo_colunas else "'ABERTO'"
+    filial_expr = "COALESCE(NULLIF(f.filial,''), 'NÃO INFORMADA')" if "filial" in furo_colunas else "'NÃO INFORMADA'"
+    patio_expr = "COALESCE(NULLIF(f.patio,''), 'NÃO INFORMADO')" if "patio" in furo_colunas else "'NÃO INFORMADO'"
 
     joins_furos = []
-
     usuario_partes = []
-
-    if "usuario_nome" in furo_colunas:
-        usuario_partes.append("NULLIF(f.usuario_nome,'')")
-
+    if "usuario_nome" in furo_colunas: usuario_partes.append("NULLIF(f.usuario_nome,'')")
     if "conferido_por" in furo_colunas:
-
-        joins_furos.append("""
-            LEFT JOIN usuarios uc
-                ON uc.id = f.conferido_por
-        """)
-
+        joins_furos.append("LEFT JOIN usuarios uc ON uc.id = f.conferido_por")
         usuario_partes.append("uc.nome")
-
     if "usuario_id" in furo_colunas:
-
-        joins_furos.append("""
-            LEFT JOIN usuarios ua
-                ON ua.id = f.usuario_id
-        """)
-
+        joins_furos.append("LEFT JOIN usuarios ua ON ua.id = f.usuario_id")
         usuario_partes.append("ua.nome")
-
-    usuario_expr = (
-        "COALESCE("
-        + ", ".join(usuario_partes)
-        + ", '-')"
-        if usuario_partes
-        else "'-'"
-    )
+    usuario_expr = "COALESCE(" + ", ".join(usuario_partes) + ", '-')" if usuario_partes else "'-'"
 
     furos_where = []
     furos_params = []
-
     if filtros["produto"]:
-
-        produto_condicoes = []
-
+        conds = []
         if "codpro" in furo_colunas:
-
-            produto_condicoes.append("f.codpro LIKE ?")
+            conds.append("f.codpro LIKE ?")
             furos_params.append(f"%{filtros['produto']}%")
-
         if "descricao" in furo_colunas:
-
-            produto_condicoes.append("f.descricao LIKE ?")
+            conds.append("f.descricao LIKE ?")
             furos_params.append(f"%{filtros['produto']}%")
-
         if "produto" in furo_colunas:
-
-            produto_condicoes.append("f.produto LIKE ?")
+            conds.append("f.produto LIKE ?")
             furos_params.append(f"%{filtros['produto']}%")
-
-        if produto_condicoes:
-
-            furos_where.append(
-                "(" + " OR ".join(produto_condicoes) + ")"
-            )
+        if conds: furos_where.append("(" + " OR ".join(conds) + ")")
 
     if filtros["usuario"]:
-
-        usuario_condicoes = []
-
+        u_conds = []
         if "usuario_nome" in furo_colunas:
-
-            usuario_condicoes.append("f.usuario_nome LIKE ?")
+            u_conds.append("f.usuario_nome LIKE ?")
             furos_params.append(f"%{filtros['usuario']}%")
-
         if "conferido_por" in furo_colunas:
-
-            usuario_condicoes.append("uc.nome LIKE ?")
+            u_conds.append("uc.nome LIKE ?")
             furos_params.append(f"%{filtros['usuario']}%")
-
         if "usuario_id" in furo_colunas:
-
-            usuario_condicoes.append("ua.nome LIKE ?")
+            u_conds.append("ua.nome LIKE ?")
             furos_params.append(f"%{filtros['usuario']}%")
-
-        if usuario_condicoes:
-
-            furos_where.append(
-                "(" + " OR ".join(usuario_condicoes) + ")"
-            )
+        if u_conds: furos_where.append("(" + " OR ".join(u_conds) + ")")
 
     if filtros["status_ajuste"] and "status" in furo_colunas:
-
-        furos_where.append("""
-            COALESCE(NULLIF(f.status,''), 'ABERTO') = ?
-        """)
-
-        furos_params.append(
-            normalizar_status_ajuste(
-                filtros["status_ajuste"]
-            )
-        )
+        furos_where.append("COALESCE(NULLIF(f.status,''), 'ABERTO') = ?")
+        furos_params.append(normalizar_status_ajuste(filtros["status_ajuste"]))
 
     if filtros["inicio"] and "data_furo" in furo_colunas:
-
         furos_where.append("date(f.data_furo) >= date(?)")
         furos_params.append(filtros["inicio"])
 
     if filtros["fim"] and "data_furo" in furo_colunas:
-
         furos_where.append("date(f.data_furo) <= date(?)")
         furos_params.append(filtros["fim"])
 
-    furos_where_sql = (
-        "WHERE " + " AND ".join(furos_where)
-        if furos_where
-        else ""
-    )
-
-    if "id" in furo_colunas:
-
-        ordem_furos = "ORDER BY f.id DESC"
-
-    elif "data_furo" in furo_colunas:
-
-        ordem_furos = "ORDER BY f.data_furo DESC"
-
-    else:
-
-        ordem_furos = ""
+    furos_where_sql = "WHERE " + " AND ".join(furos_where) if furos_where else ""
+    ordem_furos = "ORDER BY f.id DESC" if "id" in furo_colunas else ("ORDER BY f.data_furo DESC" if "data_furo" in furo_colunas else "")
 
     furos_rows = conn.execute(f"""
-
-        SELECT
-            f.*,
-            {codpro_expr} AS codpro_calc,
-            {descricao_expr} AS descricao_calc,
-            {status_expr} AS status_calc,
-            {filial_expr} AS filial_calc,
-            {patio_expr} AS patio_calc,
-            {usuario_expr} AS usuario_calc
-
+        SELECT f.*, {codpro_expr} AS codpro_calc, {descricao_expr} AS descricao_calc, {status_expr} AS status_calc,
+               {filial_expr} AS filial_calc, {patio_expr} AS patio_calc, {usuario_expr} AS usuario_calc
         FROM furo_estoque f
-
         {" ".join(joins_furos)}
-
         {furos_where_sql}
-
         {ordem_furos}
-
     """, furos_params).fetchall()
 
-    total_ajustes = 0
-    total_corretos = 0
-    total_divergentes = 0
-    total_qtde_encontrada = 0
-
-    ajuste_status_counts = {
-        "ABERTO": 0,
-        "EM ANALISE": 0,
-        "FINALIZADO": 0
-    }
-
+    total_ajustes = total_corretos = total_divergentes = total_qtde_encontrada = 0
+    ajuste_status_counts = {"ABERTO": 0, "EM ANALISE": 0, "FINALIZADO": 0}
     produtos_furos = {}
     filiais_furos = {}
     patios_furos = {}
     ajustes_recentes = []
 
     for row in furos_rows:
-
         item = dict(row)
-
         total_ajustes += 1
+        qe, qs = numero(item.get("qtde_encontrada")), numero(item.get("qtde_sistema"))
+        dif = qe - qs
+        total_qtde_encontrada += qe
+        if round(dif, 2) == 0: total_corretos += 1
+        else: total_divergentes += 1
 
-        qtde_encontrada = numero(
-            item.get("qtde_encontrada")
-        )
+        st_aj = normalizar_status_ajuste(item.get("status_calc"))
+        ajuste_status_counts[st_aj] = ajuste_status_counts.get(st_aj, 0) + 1
 
-        qtde_sistema = numero(
-            item.get("qtde_sistema")
-        )
+        cp, ds = item.get("codpro_calc") or "-", item.get("descricao_calc") or "SEM DESCRIÇÃO"
+        p_nome = f"{cp} — {ds}" if cp != "-" else ds
+        p_key = (cp, ds)
 
-        dif = qtde_encontrada - qtde_sistema
+        if p_key not in produtos_furos:
+            produtos_furos[p_key] = {"produto": p_nome, "codpro": cp, "descricao": ds, "quantidade": 0, "total_qtde": 0, "dif_liquida": 0, "divergentes": 0}
+        produtos_furos[p_key]["quantidade"] += 1
+        produtos_furos[p_key]["total_qtde"] += qe
+        produtos_furos[p_key]["dif_liquida"] += dif
+        if round(dif, 2) != 0: produtos_furos[p_key]["divergentes"] += 1
 
-        total_qtde_encontrada += qtde_encontrada
+        fl = item.get("filial_calc") or "NÃO INFORMADA"
+        if fl not in filiais_furos: filiais_furos[fl] = {"filial": fl, "quantidade": 0, "divergentes": 0}
+        filiais_furos[fl]["quantidade"] += 1
+        if round(dif, 2) != 0: filiais_furos[fl]["divergentes"] += 1
 
-        if round(dif, 2) == 0:
-            total_corretos += 1
-        else:
-            total_divergentes += 1
-
-        status_ajuste = normalizar_status_ajuste(
-            item.get("status_calc")
-        )
-
-        ajuste_status_counts[status_ajuste] = (
-            ajuste_status_counts.get(status_ajuste, 0)
-            + 1
-        )
-
-        codpro = item.get("codpro_calc") or "-"
-
-        descricao = item.get("descricao_calc") or "SEM DESCRIÇÃO"
-
-        produto_nome = (
-            f"{codpro} — {descricao}"
-            if codpro != "-"
-            else descricao
-        )
-
-        produto_key = (
-            codpro,
-            descricao
-        )
-
-        if produto_key not in produtos_furos:
-
-            produtos_furos[produto_key] = {
-                "produto": produto_nome,
-                "codpro": codpro,
-                "descricao": descricao,
-                "quantidade": 0,
-                "total_qtde": 0,
-                "dif_liquida": 0,
-                "divergentes": 0
-            }
-
-        produtos_furos[produto_key]["quantidade"] += 1
-        produtos_furos[produto_key]["total_qtde"] += qtde_encontrada
-        produtos_furos[produto_key]["dif_liquida"] += dif
-
-        if round(dif, 2) != 0:
-            produtos_furos[produto_key]["divergentes"] += 1
-
-        filial = item.get("filial_calc") or "NÃO INFORMADA"
-
-        if filial not in filiais_furos:
-
-            filiais_furos[filial] = {
-                "filial": filial,
-                "quantidade": 0,
-                "divergentes": 0
-            }
-
-        filiais_furos[filial]["quantidade"] += 1
-
-        if round(dif, 2) != 0:
-            filiais_furos[filial]["divergentes"] += 1
-
-        patio = item.get("patio_calc") or "NÃO INFORMADO"
-
-        if patio not in patios_furos:
-
-            patios_furos[patio] = {
-                "patio": patio,
-                "quantidade": 0,
-                "divergentes": 0
-            }
-
-        patios_furos[patio]["quantidade"] += 1
-
-        if round(dif, 2) != 0:
-            patios_furos[patio]["divergentes"] += 1
+        pt = item.get("patio_calc") or "NÃO INFORMADO"
+        if pt not in patios_furos: patios_furos[pt] = {"patio": pt, "quantidade": 0, "divergentes": 0}
+        patios_furos[pt]["quantidade"] += 1
+        if round(dif, 2) != 0: patios_furos[pt]["divergentes"] += 1
 
         if len(ajustes_recentes) < 8:
+            df = item.get("data_furo")
+            try:
+                ds_str = str(df)
+                d_fmt = f"{ds_str[8:10]}/{ds_str[5:7]}/{ds_str[0:4]}"
+            except: d_fmt = str(df or "-")
+            ajustes_recentes.append({"id": item.get("id"), "codpro": cp, "descricao": ds, "filial": fl, "patio": pt, "status": st_aj, "dif": round(dif, 2), "usuario": item.get("usuario_calc") or "-", "data": d_fmt})
 
-            data_furo = item.get("data_furo")
-
-            data_fmt = "-"
-
-            if data_furo:
-
-                try:
-                    data_str = str(data_furo)
-                    data_fmt = f"{data_str[8:10]}/{data_str[5:7]}/{data_str[0:4]}"
-                except:
-                    data_fmt = str(data_furo)
-
-            ajustes_recentes.append({
-                "id": item.get("id"),
-                "codpro": codpro,
-                "descricao": descricao,
-                "filial": filial,
-                "patio": patio,
-                "status": status_ajuste,
-                "dif": round(dif, 2),
-                "usuario": item.get("usuario_calc") or "-",
-                "data": data_fmt
-            })
-
-    top_produtos_furos = list(
-        produtos_furos.values()
-    )
-
-    top_produtos_furos.sort(
-        key=lambda item: (
-            item["divergentes"],
-            item["quantidade"],
-            abs(item["dif_liquida"]),
-            item["total_qtde"]
-        ),
-        reverse=True
-    )
-
-    top_produtos_furos_list = []
-
-    for item in top_produtos_furos[:20]:
-
-        top_produtos_furos_list.append({
-            "produto": item["produto"],
-            "codpro": item["codpro"],
-            "descricao": item["descricao"],
-            "quantidade": item["quantidade"],
-            "total_qtde": round(item["total_qtde"], 2),
-            "dif_liquida": round(item["dif_liquida"], 2),
-            "divergentes": item["divergentes"]
-        })
-
-    ajustes_por_filial = list(
-        filiais_furos.values()
-    )
-
-    ajustes_por_filial.sort(
-        key=lambda item: (
-            item["divergentes"],
-            item["quantidade"]
-        ),
-        reverse=True
-    )
-
-    ajustes_por_patio = list(
-        patios_furos.values()
-    )
-
-    ajustes_por_patio.sort(
-        key=lambda item: (
-            item["divergentes"],
-            item["quantidade"]
-        ),
-        reverse=True
-    )
-
-    percentual_ajustes_divergentes = (
-        round(
-            (
-                total_divergentes
-                / total_ajustes
-            ) * 100,
-            1
-        )
-        if total_ajustes
-        else 0
-    )
+    top_produtos_furos_list = [
+        {"produto": v["produto"], "codpro": v["codpro"], "descricao": v["descricao"], "quantidade": v["quantidade"], "total_qtde": round(v["total_qtde"], 2), "dif_liquida": round(v["dif_liquida"], 2), "divergentes": v["divergentes"]}
+        for v in sorted(produtos_furos.values(), key=lambda x: (x["divergentes"], x["quantidade"], abs(x["dif_liquida"])), reverse=True)[:20]
+    ]
 
     # =====================================================
     # COMPRAS
     # =====================================================
-
     compras_rows = conn.execute("""
-
-        SELECT
-            COALESCE(c.status_compra,'Não Informado') AS status,
-            COUNT(a.id) AS quantidade,
-            COALESCE(SUM(a.valor_total),0) AS total_valor
-
+        SELECT COALESCE(c.status_compra,'Não Informado') AS status, COUNT(a.id) AS quantidade, COALESCE(SUM(a.valor_total),0) AS total_valor
         FROM chamados c
-
-        LEFT JOIN acompanhamento_compras a
-            ON a.chamado_id = c.id
-
+        LEFT JOIN acompanhamento_compras a ON a.chamado_id = c.id
         GROUP BY COALESCE(c.status_compra,'Não Informado')
-
         ORDER BY total_valor DESC
-
     """).fetchall()
+    compras_stats = [dict(r) for r in compras_rows]
 
-    compras_stats = [
-        dict(row)
-        for row in compras_rows
-    ]
-
-    compras_valor_total = sum(
-        numero(item.get("total_valor"))
-        for item in compras_stats
-    )
-
-    compras_quantidade_total = sum(
-        int(item.get("quantidade") or 0)
-        for item in compras_stats
-    )
-
-    charts = {
-        "chamados_labels": [
-            item["produto"]
-            for item in chamados_produto_classificacao_list[:10]
-        ],
-        "chamados_values": [
-            item["total"]
-            for item in chamados_produto_classificacao_list[:10]
-        ],
-        "ajustes_produtos_labels": [
-            item["produto"]
-            for item in top_produtos_furos_list[:10]
-        ],
-        "ajustes_produtos_values": [
-            item["total_qtde"]
-            for item in top_produtos_furos_list[:10]
-        ],
-        "ajustes_status_labels": [
-            "ABERTO",
-            "EM ANALISE",
-            "FINALIZADO"
-        ],
-        "ajustes_status_values": [
-            ajuste_status_counts.get("ABERTO", 0),
-            ajuste_status_counts.get("EM ANALISE", 0),
-            ajuste_status_counts.get("FINALIZADO", 0)
-        ],
-        "compras_labels": [
-            item["status"]
-            for item in compras_stats
-        ],
-        "compras_values": [
-            item["quantidade"]
-            for item in compras_stats
-        ]
-    }
-
-    usuarios_dashboard = conn.execute("""
-
-        SELECT
-            id,
-            nome
-
-        FROM usuarios
-
-        ORDER BY nome
-
-    """).fetchall()
-
-    conn.close()
-
-    # Obter contagem de filiais com tratamento de erro
+    # Obter dados adicionais ANTES de fechar a conexão
     try:
         total_filiais = conn.execute("SELECT COUNT(*) FROM filiais").fetchone()[0]
-    except Exception:
-        total_filiais = 0
+    except: total_filiais = 0
 
-    # Obter furos do mês atual com tratamento de erro
-   try:
-        # Certifique-se de que 'sqlite3' e 'datetime' estejam importados
-        from datetime import datetime
-        total_filiais = conn.execute("SELECT COUNT(*) FROM filiais").fetchone()[0]
-    except Exception:
-        total_filiais = 0
-
-    # Obter furos do mês atual com tratamento de erro
     try:
-        hoje_now = datetime.now()
-        inicio_mes = hoje_now.replace(day=1).strftime("%Y-%m-%d")
+        inicio_mes = datetime.now().replace(day=1).strftime("%Y-%m-%d")
         try:
             furos_mes = conn.execute("SELECT COUNT(*) FROM furo_estoque WHERE date(data_registro) >= date(?)", (inicio_mes,)).fetchone()[0]
-        except Exception:
+        except:
             furos_mes = conn.execute("SELECT COUNT(*) FROM furo_estoque WHERE date(data_furo) >= date(?)", (inicio_mes,)).fetchone()[0]
-    except Exception:
-        furos_mes = 0
+    except: furos_mes = 0
 
-    # Agora fechamos a conexão com segurança
+    usuarios_dashboard = conn.execute("SELECT id, nome FROM usuarios ORDER BY nome").fetchall()
     conn.close()
 
-    # Preparar objeto stats para o template
+    # Preparar objetos para o template
     stats = {
         "chamados_abertos": status_counts.get("Aberto", 0),
         "entregas_hoje": len(compras_stats),
         "furos_mes": furos_mes,
         "total_filiais": total_filiais
     }
+
+    charts = {
+        "chamados_labels": [i["produto"] for i in chamados_produto_classificacao_list[:10]],
+        "chamados_values": [i["total"] for i in chamados_produto_classificacao_list[:10]],
+        "ajustes_produtos_labels": [i["produto"] for i in top_produtos_furos_list[:10]],
+        "ajustes_produtos_values": [i["total_qtde"] for i in top_produtos_furos_list[:10]],
+        "ajustes_status_labels": ["ABERTO", "EM ANALISE", "FINALIZADO"],
+        "ajustes_status_values": [ajuste_status_counts.get("ABERTO", 0), ajuste_status_counts.get("EM ANALISE", 0), ajuste_status_counts.get("FINALIZADO", 0)],
+        "compras_labels": [i["status"] for i in compras_stats],
+        "compras_values": [i["quantidade"] for i in compras_stats],
+        # Mapeamento de nomes alternativos que o template possa estar usando
+        "filiais_labels": [i["produto"] for i in chamados_produto_classificacao_list[:10]],
+        "filiais_values": [i["total"] for i in chamados_produto_classificacao_list[:10]],
+        "status_labels": list(status_counts.keys()),
+        "status_values": list(status_counts.values()),
+        "furos_labels": [i["produto"] for i in top_produtos_furos_list[:10]],
+        "furos_values": [i["total_qtde"] for i in top_produtos_furos_list[:10]]
+    }
+
+    return render_template(
+        "dashboard.html",
+        filtros=filtros,
+        stats=stats,
+        charts=charts,
+        usuarios_dashboard=usuarios_dashboard,
+        ajuste_status_counts=ajuste_status_counts,
+        ajustes_recentes=ajustes_recentes
+    )
+
 # ----------------------------
 # IMPORTAÇÃO: XLSX -> produtos
 # ----------------------------
