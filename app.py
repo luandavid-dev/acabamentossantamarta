@@ -1109,12 +1109,15 @@ def dashboard():
         "compras_values": [item["quantidade"] for item in compras_stats]
     }
 
+  # --- AJUSTE SEGURO NO RETURN CONTRA O ERRO UNDEFINED ---
     return render_template(
         "dashboard.html",
         filtros=filtros,
         stats=stats,
         charts=charts_template,
-        usuarios_dashboard=usuarios_dashboard
+        usuarios_dashboard=usuarios_dashboard,
+        # Tenta pegar do 'stats' ou cria um dicionário vazio seguro para o Jinja2 não travar
+        ajuste_status_counts=stats.get('ajuste_status_counts', stats.get('status_counts', {})) if isinstance(stats, dict) else {}
     )
 
 # ----------------------------
