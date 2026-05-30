@@ -4364,13 +4364,17 @@ def api_conferencia_pendentes():
     except Exception:
         return jsonify({"total": 0})
 
-# --- SUBSTITUA A ROTA INTEIRA POR ESTA NO MEU APP.PY ---
+# --- COPIE E SUBSTITUA A ROTA INTEIRA NO SEU APP.PY ---
 
-API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "8f3b29c1e4d5f6a7b8c9d0e1f2a3b4c5d6e7f8a")
+API_SYNC_TOKEN = os.environ.get("API_SYNC_TOKEN", "ChaveSuperSecretaDoIntegrador123!")
 
-@app.route("/api/pedidos/sincronizar", methods=["PUT"])  # <--- Mudamos de POST para PUT aqui
+@app.route("/api/pedidos/sincronizar", methods=["POST", "PUT"])
 def api_sincronizar_pedidos():
-    # 1. Validação de segurança por token de cabeçalho (Header)
+    # Desativa explicitamente o tracking de sessão para esta requisição de API,
+    # impedindo que os validadores automáticos de CSRF procurem por cookies.
+    request.environ['flask._wsgi_string'] = None 
+    
+    # 1. Validação estrita por Token de Cabeçalho (Header)
     token_recebido = request.headers.get("X-Sync-Token")
     if not token_recebido or token_recebido != API_SYNC_TOKEN:
         return jsonify({"erro": "Acesso não autorizado. Token inválido."}), 401
@@ -4383,7 +4387,7 @@ def api_sincronizar_pedidos():
     
     try:
         with get_db_connection() as conn:
-            # 2. Garante que a tabela exista
+            # 2. Cria a tabela se não existir
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS pedidos_erp (
                     NUMPED TEXT PRIMARY KEY,
@@ -4393,7 +4397,7 @@ def api_sincronizar_pedidos():
                 )
             """)
             
-            # 3. Insere ou atualiza os pedidos
+            # 3. Insere ou atualiza os registros
             for p in pedidos_recebidos:
                 conn.execute("""
                     INSERT INTO pedidos_erp (NUMPED, DATA_PEDIDO, FORNECEDOR, DTPREVREC)
@@ -4409,4 +4413,4 @@ def api_sincronizar_pedidos():
         return jsonify({"status": "sucesso", "mensagem": f"{len(pedidos_recebidos)} pedidos sincronizados."}), 200
         
     except Exception as e:
-        return jsonify({"erro": f"Erro interno: {str(e)}"}), 500
+        return jsonify({"erro": f"Erro interno no SQLite: {str(e)}"}), 500
